@@ -44,6 +44,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     <a href="#">營收與成本核算</a>
                 </div>
 
+                <div class="sidebar-divider" style="height: 1px; background-color: #222222; margin: 20px 10px; border-top: 1px dashed #333333;"></div>
+                <div class="sidebar-section-title" style="color: #666666; font-size: 0.75rem; font-family: 'Courier New', monospace; padding-left: 15px; margin-bottom: 8px; letter-spacing: 1px;">
+                    > 獨立數據模組_
+                </div>
+                
+                <button class="menu-btn ${currentPage === 'attendance.html' ? 'active' : ''}" onclick="window.location.href='attendance.html'">
+                    <span>👥 人數上傳與更新</span>
+                </button>
+
             </div>
         </nav>
     `;
