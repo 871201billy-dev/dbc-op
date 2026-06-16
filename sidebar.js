@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
 
                 <button class="menu-btn" onclick="toggleSubmenu('menu-op')">
-                    <span>房控與車控系統</span>
+                    <span>房控與車控系統未完成)</span>
                     <span class="arrow">+</span>
                 </button>
                 <div id="menu-op" class="submenu">
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
 
                 <button class="menu-btn" onclick="toggleSubmenu('menu-report')">
-                    <span>報表與分析</span>
+                    <span>報表與分析(未完成)</span>
                     <span class="arrow">+</span>
                 </button>
                 <div id="menu-report" class="submenu">
