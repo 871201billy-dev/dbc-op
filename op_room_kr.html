@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ＤＢＣ ｏｐ工具 - 韓國線房控</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --bg: #050505; --sidebar: #0a0a0a; --accent: #00ffcc; --text: #c9d1d9; --border: #1f1f1f; --menu-hover: #161b22; --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; --font-mono: 'Consolas', 'Courier New', monospace; }
+        
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body { display: flex; background: var(--bg); color: var(--text); font-family: var(--font-main); letter-spacing: 0.5px; }
+
+        nav { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; flex-shrink: 0; }
+        nav h2 { color: var(--accent); font-family: var(--font-main); font-size: 1.1rem; margin: 30px 25px; letter-spacing: 2px; font-weight: 600; text-transform: uppercase; }
+        .sidebar-scroll { flex: 1; overflow-y: auto; padding: 0 15px 20px 15px; }
+        .menu-btn { width: 100%; background: none; color: #8b949e; border: none; padding: 14px 20px; margin: 4px 0; text-align: left; font-size: 0.9rem; cursor: pointer; border-radius: 4px; transition: 0.3s; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+        .menu-btn:hover { background: var(--menu-hover); color: #ffffff; }
+        .menu-btn.active { border-left: 2px solid var(--accent); color: #ffffff; background: var(--menu-hover); }
+        .submenu { display: none; margin-bottom: 10px; border-left: 1px solid var(--border); margin-left: 20px; }
+        .submenu.show { display: block; }
+        .submenu a { display: block; color: #6e7681; text-decoration: none; padding: 10px 15px 10px 20px; font-size: 0.85rem; transition: 0.3s; }
+        .submenu a:hover { color: var(--accent); }
+        .submenu a.current { color: #ffffff; }
+        .submenu a::before { content: "› "; color: var(--border); margin-right: 8px; transition: 0.3s; }
+        .submenu a:hover::before { color: var(--accent); }
+        
+        main { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: auto; }
+        .main-header { padding: 25px; flex-shrink: 0; }
+        .main-content { padding: 0 25px 25px 25px; }
+
+        .content-card { background: #0a0a0a; padding: 30px; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.8); margin-bottom: 25px; }
+        h1 { margin-top: 0; color: #ffffff; font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 20px; }
+        .terminal-box { background: #000000; border: 1px solid var(--border); padding: 20px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; color: #8b949e; line-height: 1.6; margin-bottom: 30px; }
+        .upload-area { border: 2px dashed #30363d; padding: 40px 20px; text-align: center; background: #050505; cursor: pointer; transition: 0.3s; border-radius: 4px; margin-bottom: 20px; display: block; }
+        .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: #111; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-text { font-family: var(--font-mono); font-size: 1rem; color: #8b949e; pointer-events: none; }
+        .btn-group { display: flex; gap: 15px; margin-bottom: 30px; }
+        .calc-btn { flex: 1; background: transparent; color: #2980b9; border: 1px solid #2980b9; padding: 12px; font-family: var(--font-mono); font-size: 0.9rem; cursor: pointer; transition: 0.2s; border-radius: 2px; letter-spacing: 1px;}
+        .calc-btn:hover { background: #2980b9; color: #fff; }
+        .calc-btn.purple { color: #9b59b6; border-color: #9b59b6; }
+        .calc-btn.purple:hover { background: #9b59b6; color: #fff; }
+        .calc-btn:disabled { border-color: #30363d !important; color: #586069 !important; cursor: not-allowed; background: transparent !important; }
+        
+        .view-switcher { display: flex; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 20px; overflow: hidden; }
+        .view-btn { flex: 1; background: #0a0a0a; color: #8b949e; border: none; padding: 10px; font-family: var(--font-mono); font-size: 0.85rem; cursor: pointer; transition: 0.2s; border-right: 1px solid var(--border); }
+        .view-btn:last-child { border-right: none; }
+        .view-btn.active { background: var(--accent); color: #000; font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: #050505; table-layout: fixed; }
+        th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: center; white-space: pre-wrap; vertical-align: middle; }
+        td { word-break: break-all; }
+        th { color: #fff; font-family: var(--font-main); font-weight: bold; position: sticky; top: 0; z-index: 3; }
+        .th-ski { background: #2980b9; }
+        .th-city { background: #27ae60; }
+        .th-group { background: #8e44ad; }
+        .th-sub { background: #161b22; color: #8b949e; font-size: 0.8rem; top: 38px; }
+        
+        /* 🌟 確保 textarea 可以自動長高 */
+        td textarea { width: 100%; box-sizing: border-box; background: transparent; border: none; color: #fff; text-align: center; font-family: var(--font-mono); outline: none; resize: none; overflow: hidden; min-height: 24px; padding: 5px; line-height: 1.5; }
+        td textarea:focus { background: #161b22; }
+        .save-btn { background: #3fb950; color: #fff; border: none; padding: 10px 20px; cursor: pointer; border-radius: 2px; font-family: var(--font-mono); margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar-container"></div>
+
+    <main>
+        <div class="main-header">
+            <div class="content-card">
+                <h1>[ 韓國線房控生成器 ]</h1>
+                <div class="terminal-box" id="sys-log"></div>
+                <label class="upload-area" id="drop-zone">
+                    <input type="file" id="file-input" accept=".xlsx, .xls, .csv">
+                    <div class="upload-text" id="upload-label">> 拖曳或點擊選擇「旅客名單總表」 <</div>
+                </label>
+                <div class="btn-group">
+                    <button class="calc-btn" id="btn-kr" onclick="processData('KOREA')" disabled>[ 1. 生成最新韓國房控表 ]</button>
+                    <button class="calc-btn purple" id="btn-kr-stair" onclick="processData('KOREA_STAIRCASE')" disabled>[ 2. 下載：龍平五天循環表 ]</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="view-switcher">
+                <button class="view-btn active" onclick="switchView('ski')">龍平雪場配房</button>
+                <button class="view-btn" onclick="switchView('city')">首爾市區配房</button>
+                <button class="view-btn" onclick="switchView('inventory')">庫存管理</button>
+            </div>
+            
+            <div id="inventory-view" style="display:none;">
+                <h3 style="color: var(--accent); font-family: var(--font-mono);"> > 庫存雲端管理</h3>
+                <table id="inventory-table"></table>
+                <button class="save-btn" onclick="saveInventory()">[ 儲存庫存變更 ]</button>
+            </div>
+
+            <div id="ski-view">
+                <h3 style="color: #2980b9; font-family: var(--font-mono);"> > 龍平雪場 & 個團資料</h3>
+                <table id="ski-table">
+                    <colgroup>
+                        <col style="width: 110px;">
+                        <col style="width: 60px;"><col style="width: 60px;"><col style="width: 60px;"><col style="width: 70px;"><col style="width: 70px;"><col style="width: 250px;">
+                        <col style="width: 180px;"><col style="width: 120px;"><col style="width: 70px;"><col style="width: 70px;"><col style="width: 250px;">
+                    </colgroup>
+                    <thead></thead>
+                    <tbody id="ski-body"></tbody>
+                </table>
+            </div>
+
+            <div id="city-view" style="display:none;">
+                <h3 style="color: #27ae60; font-family: var(--font-mono);"> > 首爾市區 & 個團資料</h3>
+                <table id="city-table">
+                    <colgroup>
+                        <col style="width: 110px;">
+                        <col style="width: 180px;"><col style="width: 120px;"><col style="width: 70px;"><col style="width: 70px;"><col style="width: 250px;">
+                        <col style="width: 60px;"><col style="width: 60px;"><col style="width: 60px;"><col style="width: 70px;"><col style="width: 70px;"><col style="width: 250px;">
+                    </colgroup>
+                    <thead></thead>
+                    <tbody id="city-body"></tbody>
+                </table>
+            </div>
+
+            <button class="save-btn" id="btn-save" onclick="saveManualEdits()" style="display:none; margin-top: 20px;">[ 將配房結果存入資料庫 ]</button>
+        </div>
+    </main>
+
+    <script src="sidebar.js"></script>
+    <script>
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwDwl38nPYKjLlC_6dFYVgTOZDu99s2EtrjUvqtfuc8wC677woMD3x3GiSzeTEpchixuQ/exec";
+        let parsedMatrix = null;
+        let currentInventory = [];
+        let currentDbData = [];
+
+        window.onload = () => { 
+            setupDragDrop();
+            fetchDatabase(); 
+            switchView('ski');
+        };
+
+        function switchView(view) {
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.view-btn[onclick="switchView('${view}')"]`).classList.add('active');
+            
+            document.getElementById('inventory-view').style.display = 'none';
+            document.getElementById('ski-view').style.display = 'none';
+            document.getElementById('city-view').style.display = 'none';
+            
+            document.getElementById(`${view}-view`).style.display = 'block';
+            
+            // 切換視圖時重新觸發一次高度調整，避免 display:none 導致高度計算錯誤
+            applyAutoResize();
+        }
+
+        function fetchDatabase() {
+            document.getElementById('sys-log').innerHTML = `> 正在從雲端讀取現有資料庫...`;
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "getSavedRooms", country: "KOREA" }) })
+            .then(res => res.json()).then(res => {
+                if(res.status === 'success') {
+                    currentInventory = res.inventory || [];
+                    currentDbData = res.data || [];
+                    renderAllTables(currentDbData);
+                    document.getElementById('sys-log').innerHTML += `<br>> <span style="color:#3fb950">雲端資料庫已載入。</span>`;
+                }
+            });
+        }
+
+        function renderAllTables(dataMatrix) {
+            renderInventoryTable(dataMatrix);
+            renderRoomTable('ski', dataMatrix);
+            renderRoomTable('city', dataMatrix);
+            document.getElementById('btn-save').style.display = 'block';
+            
+            // 🌟 表格渲染完成後，套用自動高度調整
+            applyAutoResize();
+        }
+
+        // 🌟 自動調整 Textarea 高度的核心函數
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto'; // 先重置高度
+            textarea.style.height = (textarea.scrollHeight) + 'px'; // 根據內容設定新高度
+        }
+
+        // 🌟 綁定所有 Textarea 的自動高度事件
+        function applyAutoResize() {
+            document.querySelectorAll('textarea').forEach(ta => {
+                autoResizeTextarea(ta); // 初始化高度
+                // 綁定輸入事件，打字時自動長高
+                ta.removeEventListener('input', handleTextareaInput); // 避免重複綁定
+                ta.addEventListener('input', handleTextareaInput);
+            });
+        }
+        
+        function handleTextareaInput(e) {
+            autoResizeTextarea(e.target);
+        }
+
+        function renderInventoryTable(dataMatrix) {
+            const table = document.getElementById('inventory-table');
+            let html = `<thead><tr><th>日期</th><th>雪場總庫存</th><th>市區總庫存</th></tr></thead><tbody>`;
+            
+            const invMap = {};
+            (currentInventory.slice(1) || []).forEach(r => invMap[r[0]] = {ski: r[1], city: r[2]});
+
+            const dates = new Set();
+            if (dataMatrix.length > 2) {
+                dataMatrix.slice(2).forEach(r => { if(r[0]) dates.add(r[0]) });
+            }
+            
+            const sortedDates = Array.from(dates).sort();
+
+            sortedDates.forEach(date => {
+                const inv = invMap[date] || {ski: 0, city: 0};
+                html += `<tr><td>${date}</td><td><textarea>${inv.ski}</textarea></td><td><textarea>${inv.city}</textarea></td></tr>`;
+            });
+            html += `</tbody>`;
+            table.innerHTML = html;
+        }
+
+        function renderRoomTable(type, dataMatrix) {
+            const thead = document.querySelector(`#${type}-table thead`);
+            const tbody = document.querySelector(`#${type}-table tbody`);
+            thead.innerHTML = ''; tbody.innerHTML = '';
+            
+            if (dataMatrix.length < 2) {
+                tbody.innerHTML = `<tr><td colspan="12" style="color:#8b949e;">資料庫尚無紀錄。</td></tr>`;
+                return;
+            }
+
+            let theadHTML = `<tr>`;
+            theadHTML += `<th rowspan="2" style="background: #111; position: sticky; left: 0; z-index: 2;">${dataMatrix[0][0]}</th>`;
+            if (type === 'ski') {
+                theadHTML += `<th colspan="6" class="th-ski">${dataMatrix[0][1]}</th>`;
+                theadHTML += `<th colspan="5" class="th-group">${dataMatrix[0][7]}</th>`;
+            } else {
+                theadHTML += `<th colspan="5" class="th-group">${dataMatrix[0][7]}</th>`;
+                theadHTML += `<th colspan="6" class="th-city">${dataMatrix[0][12]}</th>`;
+            }
+            theadHTML += `</tr><tr>`;
+            
+            if (type === 'ski') {
+                for(let i=1; i<=6; i++) {
+                    let widthStyle = (i===6) ? 'min-width: 250px;' : '';
+                    theadHTML += `<th class="th-sub" style="${widthStyle}">${dataMatrix[1][i]}</th>`;
+                }
+                for(let i=7; i<=11; i++) {
+                    let widthStyle = (i===11) ? 'min-width: 250px;' : '';
+                    theadHTML += `<th class="th-sub" style="${widthStyle}">${dataMatrix[1][i]}</th>`;
+                }
+            } else {
+                for(let i=7; i<=11; i++) {
+                    let widthStyle = (i===11) ? 'min-width: 250px;' : '';
+                    theadHTML += `<th class="th-sub" style="${widthStyle}">${dataMatrix[1][i]}</th>`;
+                }
+                for(let i=12; i<=17; i++) {
+                    let widthStyle = (i===17) ? 'min-width: 250px;' : '';
+                    theadHTML += `<th class="th-sub" style="${widthStyle}">${dataMatrix[1][i]}</th>`;
+                }
+            }
+            theadHTML += `</tr>`;
+            thead.innerHTML = theadHTML;
+
+            const rowsToRender = dataMatrix.slice(2);
+            let dateSpans = {}, groupSpans = {}, orderSpans = {};
+            let lastDate = '', lastGroup = '', lastOrder = '';
+
+            rowsToRender.forEach(r => {
+                const currentDate = r[0] || lastDate;
+                const currentGroup = r[7] || lastGroup;
+                const currentOrder = r[8] || lastOrder;
+                dateSpans[currentDate] = (dateSpans[currentDate] || 0) + 1;
+                groupSpans[`${currentDate}-${currentGroup}`] = (groupSpans[`${currentDate}-${currentGroup}`] || 0) + 1;
+                orderSpans[`${currentDate}-${currentGroup}-${currentOrder}`] = (orderSpans[`${currentDate}-${currentGroup}-${currentOrder}`] || 0) + 1;
+                if (r[0]) lastDate = r[0]; if (r[7]) lastGroup = r[7]; if (r[8]) lastOrder = r[8];
+            });
+            
+            let rendered = { date: '', group: '', order: '' };
+
+            rowsToRender.forEach((r) => {
+                const tr = document.createElement('tr');
+                let rowHTML = '';
+                const currentDate = r[0] || (tbody.lastChild ? tbody.lastChild.dataset.date : '');
+                tr.dataset.date = currentDate;
+                
+                if (r[0] && rendered.date !== r[0]) {
+                    tr.style.borderTop = '2px solid #333';
+                    rowHTML += `<td rowspan="${dateSpans[r[0]]}" style="font-weight:bold; background: #0a0a0a; position: sticky; left: 0; z-index: 1;">${r[0]}</td>`;
+                    rendered.date = r[0];
+                    
+                    if (type === 'ski') {
+                        for(let j=1; j<=3; j++) rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea>${r[j] || ''}</textarea></td>`;
+                        rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea class="calc-source" data-type="used-ski" oninput="updateRemain(this)">${r[4] || 0}</textarea></td>`;
+                        rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea class="calc-result" data-type="remain-ski">${r[5] || 0}</textarea></td>`;
+                        rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea>${r[6] || ''}</textarea></td>`;
+                    }
+                }
+                
+                const currentGroup = r[7]; const currentOrder = r[8];
+                const groupKey = `${currentDate}-${currentGroup}`; const orderKey = `${groupKey}-${currentOrder}`;
+
+                if (rendered.group !== groupKey) {
+                    rowHTML += `<td rowspan="${groupSpans[groupKey]}"><textarea>${currentGroup}</textarea></td>`;
+                    rendered.group = groupKey;
+                }
+                if (rendered.order !== orderKey) {
+                    rowHTML += `<td rowspan="${orderSpans[orderKey]}"><textarea>${currentOrder}</textarea></td>`;
+                    rendered.order = orderKey;
+                }
+                
+                for(let j=9; j<=11; j++) rowHTML += `<td><textarea>${r[j] || ''}</textarea></td>`;
+
+                if (r[0] && rendered.date === r[0]) {
+                     if (type === 'city') {
+                         for(let j=12; j<=14; j++) rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea>${r[j] || ''}</textarea></td>`;
+                         rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea class="calc-source" data-type="used-city" oninput="updateRemain(this)">${r[15] || 0}</textarea></td>`;
+                         rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea class="calc-result" data-type="remain-city">${r[16] || 0}</textarea></td>`;
+                         rowHTML += `<td rowspan="${dateSpans[r[0]]}"><textarea>${r[17] || ''}</textarea></td>`;
+                     }
+                }
+                
+                tr.innerHTML = rowHTML;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateRemain(input) {
+            const tr = input.closest('tr');
+            const date = tr.dataset.date;
+            const inv = currentInventory.find(row => row[0] === date) || [date, 0, 0];
+            
+            if (input.dataset.type === 'used-ski') {
+                const remainCell = tr.querySelector('[data-type="remain-ski"]');
+                if(remainCell) remainCell.value = (inv[1] || 0) - (input.value || 0);
+            } else if (input.dataset.type === 'used-city') {
+                const remainCell = tr.querySelector('[data-type="remain-city"]');
+                if(remainCell) remainCell.value = (inv[2] || 0) - (input.value || 0);
+            }
+        }
+
+        function setupDragDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const uploadLabel = document.getElementById('upload-label');
+
+            function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false));
+            ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false));
+
+            dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    fileInput.files = files; 
+                    handleFile(files[0]);
+                }
+            }, false);
+
+            fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+            function handleFile(file) {
+                uploadLabel.innerText = `> 正在解析檔案: ${file.name} <`;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const workbook = XLSX.read(e.target.result, {type: 'binary'});
+                        parsedMatrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
+                        uploadLabel.innerText = `> ${file.name} 解析成功！ <`;
+                        uploadLabel.style.color = "#3fb950";
+                        document.getElementById('btn-kr').disabled = false;
+                        document.getElementById('btn-kr-stair').disabled = false;
+                    } catch (err) {
+                        uploadLabel.innerText = `> 檔案解析失敗: ${err.message}`;
+                        uploadLabel.style.color = "#da3633";
+                        parsedMatrix = null;
+                    }
+                };
+                reader.readAsBinaryString(file);
+            }
+        }
+        
+        function processData(calcType) {
+            if (!parsedMatrix) { alert("請先上傳旅客名單總表！"); return; }
+            const log = document.getElementById('sys-log');
+            log.innerHTML = `> 正在將資料傳送至伺服器進行 [ ${calcType} ] 運算...`;
+            
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "calcRooms", calcType: calcType, tableData: parsedMatrix }) })
+            .then(res => res.json()).then(data => {
+                if(data.status === 'success') {
+                    if (calcType === 'KOREA_STAIRCASE') {
+                        const ws = XLSX.utils.aoa_to_sheet(data.rawData);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, "龍平五天循環");
+                        XLSX.writeFile(wb, "龍平五天循環表.xlsx");
+                        log.innerHTML += `<br>> <span style="color:#3fb950">運算完成！Excel 檔案已自動下載。</span>`;
+                        return;
+                    }
+                    log.innerHTML += `<br>> <span style="color:#3fb950">運算完成！最新房控表已生成在下方。</span>`;
+                    currentDbData = data.rawData;
+                    renderAllTables(currentDbData);
+                } else {
+                    log.innerHTML += `<br>> <span style="color:#da3633">運算失敗: ${data.message}</span>`;
+                }
+            });
+        }
+
+        function saveInventory() {
+            const table = document.getElementById('inventory-table');
+            const rows = table.querySelectorAll('tbody tr');
+            const dataToSave = [["日期", "雪場總庫存", "市區總庫存"]];
+            rows.forEach(row => {
+                const cells = row.cells;
+                const inputs = row.querySelectorAll('textarea');
+                dataToSave.push([cells[0].innerText, inputs[0].value, inputs[1].value]);
+            });
+            saveToServer(currentDbData, dataToSave);
+        }
+
+        function saveManualEdits() {
+            const finalData = [
+                ["實際入住日期", "🏂 龍平雪場", "", "", "", "", "", "個團資料", "", "", "", "", "🏙️ 首爾市區", "", "", "", "", ""],
+                ["日期", "單人房", "雙人房", "三人房", "總房數", "剩餘房數", "📝 續滑出發日備註", "團號", "訂單編號", "人數", "早餐升等", "備註", "單人房", "雙人房", "三人房", "總房數", "剩餘房數", "📝 續住出發日備註"]
+            ];
+            
+            const skiTbody = document.getElementById('ski-table').querySelector('tbody');
+            const cityTbody = document.getElementById('city-table').querySelector('tbody');
+            const skiRows = Array.from(skiTbody.querySelectorAll('tr'));
+            const cityRows = Array.from(cityTbody.querySelectorAll('tr'));
+
+            let dataMap = {};
+
+            skiRows.forEach(tr => {
+                const date = tr.dataset.date;
+                if (!dataMap[date]) dataMap[date] = [];
+                
+                let rowData = { ski: [], group: [] };
+                const dateCell = tr.querySelector('td[rowspan]');
+                
+                if (dateCell) {
+                    const inputs = Array.from(tr.querySelectorAll('textarea'));
+                    rowData.ski = inputs.slice(0, 6).map(i => i.value);
+                    rowData.group = inputs.slice(6).map(i => i.value);
+                } else {
+                    const inputs = Array.from(tr.querySelectorAll('textarea'));
+                    rowData.group = inputs.map(i => i.value);
+                }
+                dataMap[date].push(rowData);
+            });
+
+            cityRows.forEach((tr, index) => {
+                const date = tr.dataset.date;
+                const dateCell = tr.querySelector('td[rowspan]');
+                if (dateCell && dataMap[date] && dataMap[date][0]) {
+                    const inputs = Array.from(tr.querySelectorAll('textarea'));
+                    dataMap[date][0].city = inputs.slice(5).map(i => i.value);
+                }
+            });
+
+            Object.keys(dataMap).sort().forEach(date => {
+                dataMap[date].forEach((d, index) => {
+                    let finalRow = [];
+                    if (index === 0) {
+                        finalRow.push(date);
+                        finalRow.push(...(d.ski || Array(6).fill('')));
+                        finalRow.push(...(d.group || Array(5).fill('')));
+                        finalRow.push(...(d.city || Array(6).fill('')));
+                    } else {
+                        finalRow.push('');
+                        finalRow.push(...Array(6).fill(''));
+                        finalRow.push(...(d.group || Array(5).fill('')));
+                        finalRow.push(...Array(6).fill(''));
+                    }
+                    finalData.push(finalRow);
+                });
+            });
+            
+            const invTable = document.getElementById('inventory-table');
+            const invRows = invTable.querySelectorAll('tbody tr');
+            const newInventoryData = [["日期", "雪場總庫存", "市區總庫存"]];
+            invRows.forEach(row => {
+                const cells = row.cells;
+                const inputs = row.querySelectorAll('textarea');
+                newInventoryData.push([cells[0].innerText, inputs[0].value, inputs[1].value]);
+            });
+
+            saveToServer(finalData, newInventoryData);
+        }
+
+        function saveToServer(data, inventoryData) {
+            document.getElementById('sys-log').innerHTML = `> 正在將資料儲存至雲端資料庫...`;
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "saveRooms", country: "KOREA", tableData: data, inventoryData: inventoryData }) })
+            .then(res => res.json()).then(res => {
+                if(res.status === 'success') {
+                    document.getElementById('sys-log').innerHTML += `<br>> <span style="color:#3fb950">儲存成功！資料庫已更新。</span>`;
+                    fetchDatabase();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

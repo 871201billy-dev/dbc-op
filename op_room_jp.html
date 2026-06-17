@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ＤＢＣ ｏｐ工具 - 日本線配房</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --bg: #050505; --sidebar: #0a0a0a; --accent: #00ffcc; --text: #c9d1d9; --border: #1f1f1f; --menu-hover: #161b22; --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; --font-mono: 'Consolas', 'Courier New', monospace; }
+        body { margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text); font-family: var(--font-main); overflow: hidden; letter-spacing: 0.5px; }
+        nav { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; }
+        nav h2 { color: var(--accent); font-family: var(--font-main); font-size: 1.1rem; margin: 30px 25px; letter-spacing: 2px; font-weight: 600; text-transform: uppercase; }
+        .sidebar-scroll { flex: 1; overflow-y: auto; padding: 0 15px 20px 15px; }
+        .menu-btn { width: 100%; background: none; color: #8b949e; border: none; padding: 14px 20px; margin: 4px 0; text-align: left; font-size: 0.9rem; cursor: pointer; border-radius: 4px; transition: 0.3s; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+        .menu-btn:hover { background: var(--menu-hover); color: #ffffff; }
+        .menu-btn.active { border-left: 2px solid var(--accent); color: #ffffff; background: var(--menu-hover); }
+        .submenu { display: none; margin-bottom: 10px; border-left: 1px solid var(--border); margin-left: 20px; }
+        .submenu.show { display: block; }
+        .submenu a { display: block; color: #6e7681; text-decoration: none; padding: 10px 15px 10px 20px; font-size: 0.85rem; transition: 0.3s; }
+        .submenu a:hover { color: var(--accent); }
+        .submenu a.current { color: #ffffff; }
+        .submenu a::before { content: "› "; color: var(--border); margin-right: 8px; transition: 0.3s; }
+        .submenu a:hover::before { color: var(--accent); }
+        main { flex: 1; padding: 40px; overflow-y: auto; }
+        .content-card { background: #0a0a0a; padding: 40px; border-radius: 4px; border: 1px solid var(--border); min-height: 85%; box-shadow: 0 20px 40px rgba(0,0,0,0.8); margin-bottom: 40px; }
+        h1 { margin-top: 0; color: #ffffff; font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 20px; }
+        .terminal-box { background: #000000; border: 1px solid var(--border); padding: 20px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; color: #8b949e; line-height: 1.6; margin-bottom: 30px; }
+        .upload-area { border: 2px dashed #30363d; padding: 40px 20px; text-align: center; background: #050505; cursor: pointer; transition: 0.3s; border-radius: 4px; margin-bottom: 20px; display: block; }
+        .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: #111; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-text { font-family: var(--font-mono); font-size: 1rem; color: #8b949e; pointer-events: none; }
+        .btn-group { display: flex; gap: 15px; margin-bottom: 30px; }
+        .calc-btn { flex: 1; background: transparent; color: #d35400; border: 1px solid #d35400; padding: 12px; font-family: var(--font-mono); font-size: 0.9rem; cursor: pointer; transition: 0.2s; border-radius: 2px; letter-spacing: 1px;}
+        .calc-btn:hover { background: #d35400; color: #fff; }
+        .calc-btn:disabled { border-color: #30363d !important; color: #586069 !important; cursor: not-allowed; background: transparent !important; }
+        
+        /* 表格樣式 */
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 20px; background: #050505; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: center; }
+        th { background: #111; color: var(--accent); font-family: var(--font-mono); font-weight: normal; }
+        td input { width: 100%; background: transparent; border: none; color: #fff; text-align: center; font-family: var(--font-mono); outline: none; }
+        td input:focus { background: #161b22; }
+        .diff-section { display: none; border: 1px solid #d29922; padding: 20px; border-radius: 4px; margin-bottom: 30px; background: rgba(210, 153, 34, 0.05); }
+        .diff-section h3 { color: #d29922; margin-top: 0; font-family: var(--font-mono); }
+        .save-btn { background: #3fb950; color: #fff; border: none; padding: 10px 20px; cursor: pointer; border-radius: 2px; font-family: var(--font-mono); }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar-container"></div>
+
+    <main>
+        <div class="content-card">
+            <h1>[ 日本線配房核算與資料庫 ]</h1>
+            
+            <div class="terminal-box" id="sys-log">
+                > 日本線房控核心模組已載入。<br>
+                > 正在從伺服器讀取目前房控資料庫...
+            </div>
+
+            <label class="upload-area" id="drop-zone">
+                <input type="file" id="file-input" accept=".xlsx, .xls, .csv">
+                <div class="upload-text" id="upload-label">> 點擊選擇總表 Excel 檔案，或拖曳至此處 <</div>
+            </label>
+
+            <div class="btn-group">
+                <button class="calc-btn" id="btn-jp" onclick="processData('JAPAN')" disabled>[ 執行運算並比對日本雙軌房控 ]</button>
+            </div>
+
+            <!-- 智慧比對區塊 -->
+            <div class="diff-section" id="diff-section">
+                <h3>⚠️ 發現新數據！請勾選要覆蓋至資料庫的日期：</h3>
+                <table id="diff-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;"><input type="checkbox" id="select-all" checked onchange="toggleAll(this)"></th>
+                            <th>日期</th>
+                            <th>雪場總數 (舊 ➔ 新)</th>
+                            <th>市區總數 (舊 ➔ 新)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diff-body"></tbody>
+                </table>
+                <button class="save-btn" onclick="applyDiff()">[ 確認覆蓋勾選項目 ]</button>
+            </div>
+
+            <!-- 目前資料庫區塊 -->
+            <h3 style="color: var(--accent); font-family: var(--font-mono); margin-top: 40px;">> 目前資料庫狀態 (可手動編輯)</h3>
+            <table id="db-table">
+                <thead>
+                    <tr>
+                        <th>日期</th><th>雪單</th><th>雪雙</th><th>雪三</th><th>雪總</th><th>雪備註</th>
+                        <th>市單</th><th>市雙</th><th>市三</th><th>市總</th><th>市備註</th>
+                    </tr>
+                </thead>
+                <tbody id="db-body">
+                    <tr><td colspan="11" style="color: #8b949e;">載入中...</td></tr>
+                </tbody>
+            </table>
+            <button class="save-btn" onclick="saveManualEdits()" style="background: transparent; border: 1px solid #3fb950; color: #3fb950;">[ 儲存手動修改 ]</button>
+        </div>
+    </main>
+
+    <script src="sidebar.js"></script>
+    <script>
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwDwl38nPYKjLlC_6dFYVgTOZDu99s2EtrjUvqtfuc8wC677woMD3x3GiSzeTEpchixuQ/exec";
+        let parsedMatrix = null; 
+        let dbData = []; 
+        let calcData = []; 
+
+        window.onload = () => { fetchDatabase(); };
+
+        function fetchDatabase() {
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "getSavedRooms", country: "JAPAN" }) })
+            .then(res => res.json()).then(res => {
+                if(res.status === 'success') {
+                    dbData = res.data;
+                    renderDbTable();
+                    document.getElementById('sys-log').innerHTML += `<br>> <span style="color:#3fb950">資料庫讀取成功。</span>`;
+                }
+            });
+        }
+
+        function renderDbTable() {
+            const tbody = document.getElementById('db-body');
+            tbody.innerHTML = '';
+            if(dbData.length <= 1) { tbody.innerHTML = `<tr><td colspan="11" style="color: #8b949e;">資料庫尚無紀錄</td></tr>`; return; }
+            
+            for(let i = 1; i < dbData.length; i++) {
+                let r = dbData[i];
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${r[0]}</td>
+                    <td><input type="text" value="${r[1]}" data-r="${i}" data-c="1"></td>
+                    <td><input type="text" value="${r[2]}" data-r="${i}" data-c="2"></td>
+                    <td><input type="text" value="${r[3]}" data-r="${i}" data-c="3"></td>
+                    <td style="color:var(--accent); font-weight:bold;"><input type="text" value="${r[4]}" data-r="${i}" data-c="4"></td>
+                    <td><input type="text" value="${r[5]}" data-r="${i}" data-c="5"></td>
+                    <td><input type="text" value="${r[6]}" data-r="${i}" data-c="6"></td>
+                    <td><input type="text" value="${r[7]}" data-r="${i}" data-c="7"></td>
+                    <td><input type="text" value="${r[8]}" data-r="${i}" data-c="8"></td>
+                    <td style="color:var(--accent); font-weight:bold;"><input type="text" value="${r[9]}" data-r="${i}" data-c="9"></td>
+                    <td><input type="text" value="${r[10]}" data-r="${i}" data-c="10"></td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadLabel = document.getElementById('upload-label');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }, false));
+        dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); }
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            uploadLabel.innerText = `> 正在解析檔案: ${file.name} <`;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const workbook = XLSX.read(e.target.result, {type: 'binary'});
+                parsedMatrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
+                uploadLabel.innerText = `> 檔案解析成功！請點擊下方按鈕 <`;
+                uploadLabel.style.color = "#3fb950";
+                document.getElementById('btn-jp').disabled = false;
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function processData(calcType) {
+            const log = document.getElementById('sys-log');
+            log.innerHTML = `> 正在將資料傳送至伺服器進行 [ ${calcType} ] 運算...`;
+            
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "calcRooms", calcType: calcType, tableData: parsedMatrix }) })
+            .then(res => res.json()).then(data => {
+                if(data.status === 'success') {
+                    calcData = data.rawData;
+                    log.innerHTML = `> <span style="color:#3fb950">運算完成！請在下方確認比對結果。</span>`;
+                    showDiff();
+                }
+            });
+        }
+
+        function showDiff() {
+            const diffSection = document.getElementById('diff-section');
+            const tbody = document.getElementById('diff-body');
+            tbody.innerHTML = '';
+            
+            let dbMap = {};
+            if(dbData.length > 1) dbData.slice(1).forEach(r => dbMap[r[0]] = r);
+
+            calcData.slice(2).forEach((r, idx) => {
+                let date = r[0];
+                let newSkiTot = r[4] || 0; let newCityTot = r[9] || 0;
+                let oldSkiTot = dbMap[date] ? (dbMap[date][4] || 0) : 0;
+                let oldCityTot = dbMap[date] ? (dbMap[date][9] || 0) : 0;
+
+                let skiStr = oldSkiTot == newSkiTot ? `${oldSkiTot}` : `<span style="color:#da3633">${oldSkiTot}</span> ➔ <span style="color:#3fb950; font-weight:bold;">${newSkiTot}</span>`;
+                let cityStr = oldCityTot == newCityTot ? `${oldCityTot}` : `<span style="color:#da3633">${oldCityTot}</span> ➔ <span style="color:#3fb950; font-weight:bold;">${newCityTot}</span>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="diff-cb" value="${idx + 2}" checked></td>
+                        <td>${date}</td>
+                        <td>${skiStr}</td>
+                        <td>${cityStr}</td>
+                    </tr>
+                `;
+            });
+            diffSection.style.display = 'block';
+        }
+
+        function toggleAll(source) {
+            document.querySelectorAll('.diff-cb').forEach(cb => cb.checked = source.checked);
+        }
+
+        function applyDiff() {
+            let dbMap = {};
+            if(dbData.length > 1) dbData.slice(1).forEach(r => dbMap[r[0]] = r);
+
+            document.querySelectorAll('.diff-cb:checked').forEach(cb => {
+                let newRow = calcData[cb.value];
+                dbMap[newRow[0]] = newRow;
+            });
+
+            let finalData = [["日期", "雪_單", "雪_雙", "雪_三", "雪_總", "雪_備註", "市_單", "市_雙", "市_三", "市_總", "市_備註"]];
+            Object.keys(dbMap).sort().forEach(k => finalData.push(dbMap[k]));
+
+            saveToServer(finalData);
+        }
+
+        function saveManualEdits() {
+            let finalData = [["日期", "雪_單", "雪_雙", "雪_三", "雪_總", "雪_備註", "市_單", "市_雙", "市_三", "市_總", "市_備註"]];
+            document.querySelectorAll('#db-body tr').forEach(tr => {
+                let row = [tr.cells[0].innerText];
+                tr.querySelectorAll('input').forEach(inp => row.push(inp.value));
+                finalData.push(row);
+            });
+            saveToServer(finalData);
+        }
+
+        function saveToServer(data) {
+            document.getElementById('sys-log').innerHTML = `> 正在將資料儲存至伺服器...`;
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "saveRooms", country: "JAPAN", tableData: data }) })
+            .then(res => res.json()).then(res => {
+                if(res.status === 'success') {
+                    document.getElementById('sys-log').innerHTML = `> <span style="color:#3fb950">儲存成功！資料庫已更新。</span>`;
+                    document.getElementById('diff-section').style.display = 'none';
+                    fetchDatabase();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
