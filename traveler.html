@@ -66,6 +66,17 @@
         .empty { text-align: center; color: var(--muted); padding: 40px 0; }
         .status { margin-top: 12px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted-2); min-height: 1em; }
 
+        .erp-help { flex: 1 1 100%; color: var(--muted); font-size: 0.82rem; }
+        .erp-help summary { cursor: pointer; color: var(--accent); }
+        .erp-help ol { margin: 8px 0 0; padding-left: 20px; line-height: 1.7; }
+        .erp-help b { color: var(--text-strong); }
+        .erp-path { font-family: var(--font-mono); color: var(--text); }
+
+        /* 拖曳上傳提示 */
+        #drop-overlay { position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); pointer-events: none; }
+        #drop-overlay > div { border: 3px dashed var(--accent); border-radius: 12px; padding: 40px 60px; background: var(--surface); color: var(--text-strong); font-size: 1.4rem; font-weight: 600; text-align: center; line-height: 1.8; }
+        #drop-overlay small { color: var(--muted); font-size: 0.85rem; font-weight: normal; }
+
         /* 分類設定 */
         #settings-panel { border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-bottom: 24px; background: var(--bg); }
         #settings-panel table td { padding: 4px; border: none; }
@@ -78,6 +89,11 @@
 <body>
     <div id="sidebar-container"></div>
 
+    <!-- 拖曳上傳時的提示 -->
+    <div id="drop-overlay" hidden>
+        <div>📥 放開以上傳<br><small>ERP 旅客報表或尾款表都可以，系統會自動判斷；可一次拖多個檔案</small></div>
+    </div>
+
     <main>
         <div class="content-card">
             <h1>[ 旅客進度表 ]</h1>
@@ -85,10 +101,17 @@
 
             <div class="upload-bar" id="upload-bar" hidden>
                 <span class="label">更新資料：</span>
-                <label class="ghost-btn">① 上傳 ERP 旅客報表<input type="file" accept=".xlsx,.xls" hidden onchange="uploadFile(this, 'erp')"></label>
-                <label class="ghost-btn">② 上傳尾款表<input type="file" accept=".xlsx,.xls" hidden onchange="uploadFile(this, 'pay')"></label>
+                <label class="ghost-btn" title="ERP 下載位置：見下方說明">① 上傳「個團設定加購明細」<input type="file" accept=".xlsx,.xls" hidden onchange="uploadFile(this, 'erp')"></label>
+                <label class="ghost-btn" title="ERP 下載位置：見下方說明">② 上傳「參團旅客應收明細表」<input type="file" accept=".xlsx,.xls" multiple hidden onchange="uploadFile(this, 'pay')"></label>
                 <button class="ghost-btn" onclick="toggleSettings()">⚙ 行程分類設定</button>
-                <div class="upload-msg" id="upload-msg">Excel 只在這台電腦的瀏覽器裡解析，只會上傳遮罩姓名與檢查結果。</div>
+                <details class="erp-help">
+                    <summary>這兩份報表在 ERP 哪裡下載？</summary>
+                    <ol>
+                        <li><b>個團設定加購明細</b>：用來檢查旅客資料是否完整、護照效期。<br><span class="erp-path">ERP 下載位置：(待補)</span></li>
+                        <li><b>參團旅客應收明細表</b>：用來更新尾款清 / 未清，範圍大時可以分段下載、分次上傳。<br><span class="erp-path">ERP 下載位置：(待補)</span></li>
+                    </ol>
+                </details>
+                <div class="upload-msg" id="upload-msg">也可以直接把 Excel 拖曳到這個頁面 (例如從瀏覽器的下載清單)，系統會自動判斷是哪一種報表。Excel 只在這台電腦的瀏覽器裡解析，只會上傳遮罩姓名與檢查結果。</div>
             </div>
 
             <div id="settings-panel" hidden>
@@ -297,15 +320,62 @@
 
         // ===== 上傳：在瀏覽器解析後只送出檢查結果 =====
         function uploadFile(input, kind) {
-            const file = input.files[0];
+            const files = [...input.files];
             input.value = '';
-            if (!file) return;
+            uploadQueue(files, kind);
+        }
+
+        // 多個檔案依序上傳 (例如分段下載的尾款表)，最後一起顯示結果
+        function uploadQueue(files, kind) {
+            if (!files.length) return;
+            const msg = document.getElementById('upload-msg');
+            const results = [];
+            files.reduce((chain, file, i) => chain
+                .then(() => handleFile(file, kind, files.length > 1 ? `(${i + 1}/${files.length}) ` : ''))
+                .then(r => { results.push(r); }), Promise.resolve())
+                .then(() => {
+                    msg.className = 'upload-msg ' + (results.every(r => r.ok) ? 'ok' : results.some(r => r.ok) ? '' : 'err');
+                    msg.textContent = results.map(r => r.text).join('\n');
+                    if (results.some(r => r.ok)) loadAll(true);
+                });
+        }
+
+        // 拖曳上傳：把檔案拖到頁面任何地方 (例如從瀏覽器的下載清單)，自動判斷是哪一種報表
+        let dragDepth = 0;
+        const dropOverlay = document.getElementById('drop-overlay');
+        const canDrop = e => meta && meta.canUpload && e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+        document.addEventListener('dragenter', e => { if (!canDrop(e)) return; e.preventDefault(); dragDepth++; dropOverlay.hidden = false; });
+        document.addEventListener('dragover', e => { if (canDrop(e)) e.preventDefault(); });
+        document.addEventListener('dragleave', e => { if (!canDrop(e)) return; if (--dragDepth <= 0) { dragDepth = 0; dropOverlay.hidden = true; } });
+        document.addEventListener('drop', e => {
+            if (!canDrop(e)) return;
+            e.preventDefault();
+            dragDepth = 0;
+            dropOverlay.hidden = true;
+            const files = [...e.dataTransfer.files].filter(f => /\.xlsx?$/i.test(f.name));
+            const msg = document.getElementById('upload-msg');
+            if (!files.length) { msg.className = 'upload-msg err'; msg.textContent = '✗ 請拖曳 Excel 檔 (.xlsx 或 .xls)'; return; }
+            uploadQueue(files, null);
+        });
+
+        // 依標題判斷是哪一種報表：ERP 旅客報表有「團號」+「訂單編號」，尾款表有「訂單編號」+「旅客姓名」
+        function detectKind(wb) {
+            const hasHeaders = (name, words) => XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' }).slice(0, 15)
+                .some(r => words.every(w => r.some(c => String(c).trim() === w)));
+            if (hasHeaders(wb.SheetNames[0], ['團號', '訂單編號'])) return 'erp';
+            if (wb.SheetNames.some(n => hasHeaders(n, ['訂單編號', '旅客姓名']))) return 'pay';
+            return null;
+        }
+
+        function handleFile(file, kind, prefix) {
             const msg = document.getElementById('upload-msg');
             msg.className = 'upload-msg';
-            msg.textContent = `正在這台電腦上解析「${file.name}」…`;
-            file.arrayBuffer()
+            msg.textContent = `${prefix}正在這台電腦上解析「${file.name}」…`;
+            return file.arrayBuffer()
                 .then(buf => {
                     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+                    kind = kind || detectKind(wb);
+                    if (!kind) throw new Error(`「${file.name}」看起來不是 ERP 旅客報表或尾款表，找不到對應的欄位`);
                     return kind === 'erp' ? TravelerParse.parseErp(XLSX, wb) : TravelerParse.parsePayment(XLSX, wb);
                 })
                 .then(parsed => {
@@ -318,14 +388,12 @@
                 })
                 .then(({ res, parsed }) => {
                     if (res.status !== 'success') throw new Error(res.message);
-                    msg.className = 'upload-msg ok';
-                    let text = '✓ ' + res.message;
+                    let text = `✓ ${prefix}${kind === 'erp' ? '個團設定加購明細' : '參團旅客應收明細表'}：${res.message}`;
                     if (parsed.missingColumns && parsed.missingColumns.length) text += `\n（報表中找不到這些欄位，所以沒有檢查：${parsed.missingColumns.join('、')}）`;
                     if (res.unmatched && res.unmatched.length) text += `\n（對不到的多半是 ERP 報表匯出後才新增、或已取消的訂單）`;
-                    msg.textContent = text;
-                    loadAll(true);
+                    return { ok: true, text };
                 })
-                .catch(err => { msg.className = 'upload-msg err'; msg.textContent = '✗ ' + err.message; });
+                .catch(err => ({ ok: false, text: `✗ ${prefix}${err.message}` }));
         }
 
         // ===== 行程分類設定 =====
