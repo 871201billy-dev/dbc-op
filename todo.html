@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ＤＢＣ ｏｐ工具 - 我的待辦</title>
+    <link rel="stylesheet" href="common.css">
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <style>
+        main { flex: 1; padding: 40px; overflow-y: auto; }
+        .content-card { background: var(--surface); padding: 40px; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 20px 40px var(--shadow); max-width: 860px; margin: 0 auto; }
+        h1 { margin-top: 0; color: var(--text-strong); font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 8px; }
+        .subtitle { color: var(--muted); font-size: 0.85rem; margin: 0 0 28px; }
+
+        /* 新增列 */
+        .add-row { display: flex; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
+        .add-row input[type="text"] { flex: 1 1 260px; padding: 12px 14px; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-strong); font-size: 1rem; border-radius: 4px; outline: none; }
+        .add-row input[type="text"]:focus { border-color: var(--accent); }
+        .add-row input[type="date"] { padding: 10px; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-strong); border-radius: 4px; font-family: var(--font-mono); }
+        .primary-btn { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 10px 22px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+        .primary-btn:hover { background: var(--accent); color: var(--accent-contrast); }
+
+        /* 待辦清單 */
+        .todo-list { list-style: none; margin: 0; padding: 0; }
+        .todo-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 8px; background: var(--bg); transition: 0.2s; }
+        .todo-item:hover { border-color: var(--border-strong); background: var(--surface-2); }
+        .todo-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .todo-text { flex: 1; min-width: 0; color: var(--text-strong); font-size: 0.98rem; line-height: 1.5; overflow-wrap: anywhere; cursor: text; }
+        .todo-text input { width: 100%; box-sizing: border-box; padding: 4px 8px; background: var(--input-bg); border: 1px solid var(--accent); color: var(--text-strong); font-size: 0.98rem; border-radius: 3px; outline: none; }
+        .due { flex-shrink: 0; font-family: var(--font-mono); font-size: 0.78rem; padding: 3px 8px; border-radius: 10px; background: var(--surface-3); color: var(--muted); cursor: pointer; white-space: nowrap; }
+        .due.today { background: rgba(210,153,34,0.18); color: #d29922; }
+        .due.overdue { background: rgba(218,54,51,0.18); color: #da3633; }
+        .due-input { flex-shrink: 0; padding: 3px 6px; background: var(--input-bg); border: 1px solid var(--accent); color: var(--text-strong); border-radius: 3px; font-family: var(--font-mono); font-size: 0.8rem; }
+        .icon-btn { flex-shrink: 0; background: none; border: none; color: var(--muted-2); font-size: 1.1rem; cursor: pointer; padding: 2px 6px; border-radius: 3px; opacity: 0; transition: 0.15s; }
+        .todo-item:hover .icon-btn, .icon-btn:focus { opacity: 1; }
+        .icon-btn:hover { color: #da3633; background: var(--surface-3); }
+        .todo-item.done .todo-text { color: var(--muted); text-decoration: line-through; }
+        .todo-item.done { opacity: 0.75; }
+        .empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 0.9rem; }
+
+        .done-header { display: flex; justify-content: space-between; align-items: center; margin: 26px 0 10px; color: var(--muted); font-size: 0.88rem; }
+        .link-btn { background: none; border: none; color: var(--muted); cursor: pointer; font: inherit; text-decoration: underline; padding: 0; }
+        .link-btn:hover { color: var(--accent); }
+        .status { margin-top: 18px; font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted-2); min-height: 1.2em; }
+
+        /* 手機上刪除鈕常駐顯示 (沒有滑鼠移過的狀態) */
+        @media (max-width: 768px) {
+            .icon-btn { opacity: 1; }
+            .add-row .primary-btn { flex: 1 1 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <main>
+        <div class="content-card">
+            <h1>[ 我的待辦 ]</h1>
+            <p class="subtitle">只有你自己看得到這裡的內容。點文字可修改，點日期可改期限。</p>
+
+            <div class="add-row">
+                <input type="text" id="new-text" placeholder="新增待辦事項，按 Enter 加入" maxlength="500">
+                <input type="date" id="new-due" title="期限 (可不填)">
+                <button class="primary-btn" onclick="addTodo()">[ + 新增 ]</button>
+            </div>
+
+            <ul class="todo-list" id="open-list"><li class="empty">讀取中...</li></ul>
+
+            <div id="done-section" hidden>
+                <div class="done-header">
+                    <button class="link-btn" id="toggle-done" onclick="toggleDone()"></button>
+                    <button class="link-btn" onclick="clearDone()">清除已完成</button>
+                </div>
+                <ul class="todo-list" id="done-list" hidden></ul>
+            </div>
+
+            <div class="status" id="status"></div>
+        </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="sidebar.js"></script>
+    <script>
+        let items = [];
+        let pending = 0;          // 尚未完成的雲端同步數
+        let showDone = false;
+        const statusEl = document.getElementById('status');
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const todayStr = () => { const d = new Date(); return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`; };
+        const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+
+        // ===== 讀取 =====
+        fetchWithCache(GAS_API.AUTH, { action: 'todoList' }, (res) => {
+            if (res.status !== 'success') { statusEl.textContent = '讀取失敗：' + res.message; return; }
+            if (pending === 0) { items = res.items; render(); }
+        }).then(() => { statusEl.textContent = '已同步'; })
+          .catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
+
+        // ===== 寫入：畫面先更新，背景依序同步到雲端 =====
+        // 一次只送一筆，避免連續操作時多筆請求在 GAS 端互相排隊逾時
+        let queue = Promise.resolve();
+        let hadError = false;
+        function sync(body) {
+            pending++;
+            statusEl.textContent = `儲存中...（剩 ${pending} 筆）`;
+            queue = queue.then(() => fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify(body) })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success') { hadError = true; statusEl.textContent = '儲存失敗：' + res.message; return; }
+                    if (pending === 1) { items = res.items; render(); }
+                })
+                .catch(err => { hadError = true; statusEl.textContent = '網路錯誤，有變更沒有存到：' + err.message; })
+                .then(() => {
+                    pending--;
+                    if (pending > 0) statusEl.textContent = `儲存中...（剩 ${pending} 筆）`;
+                    else if (!hadError) statusEl.textContent = '已儲存';
+                    hadError = pending > 0 && hadError;
+                }));
+            return queue;
+        }
+        window.addEventListener('beforeunload', e => { if (pending > 0) { e.preventDefault(); e.returnValue = ''; } });
+
+        function saveItem(item) { render(); sync({ action: 'todoSave', item }); }
+
+        function addTodo() {
+            const input = document.getElementById('new-text');
+            const dueInput = document.getElementById('new-due');
+            const text = input.value.trim();
+            if (!text) { input.focus(); return; }
+            const item = { id: newId(), text, due: dueInput.value ? dueInput.value.replace(/-/g, '/') : '', done: false, created: '', doneAt: '' };
+            items.push(item);
+            input.value = ''; dueInput.value = '';
+            input.focus();
+            saveItem(item);
+        }
+        document.getElementById('new-text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addTodo(); });
+
+        function toggleItem(id) {
+            const item = items.find(t => t.id === id);
+            item.done = !item.done;
+            item.doneAt = item.done ? todayStr() : '';
+            saveItem(item);
+        }
+
+        function deleteItem(id) {
+            items = items.filter(t => t.id !== id);
+            render();
+            sync({ action: 'todoDelete', id });
+        }
+
+        function clearDone() {
+            if (!items.some(t => t.done)) return;
+            items = items.filter(t => !t.done);
+            render();
+            sync({ action: 'todoClearDone' });
+        }
+
+        function toggleDone() { showDone = !showDone; render(); }
+
+        // 點文字 → 原地修改
+        function editText(id, el) {
+            const item = items.find(t => t.id === id);
+            el.innerHTML = `<input type="text" maxlength="500" value="${esc(item.text)}">`;
+            const input = el.querySelector('input');
+            input.focus();
+            input.select();
+            let finished = false;
+            const finish = save => {
+                if (finished) return;
+                finished = true;
+                const text = input.value.trim();
+                if (save && text && text !== item.text) { item.text = text; saveItem(item); } else render();
+            };
+            input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) finish(true); if (e.key === 'Escape') finish(false); });
+            input.addEventListener('blur', () => finish(true));
+        }
+
+        // 點日期 → 修改期限 (清空即移除期限)
+        function editDue(id, el) {
+            const item = items.find(t => t.id === id);
+            const input = document.createElement('input');
+            input.type = 'date';
+            input.className = 'due-input';
+            input.value = item.due ? item.due.replace(/\//g, '-') : '';
+            el.replaceWith(input);
+            input.focus();
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                const due = input.value ? input.value.replace(/-/g, '/') : '';
+                if (due !== item.due) { item.due = due; saveItem(item); } else render();
+            };
+            input.addEventListener('change', finish);
+            input.addEventListener('blur', finish);
+        }
+
+        // ===== 畫面 =====
+        function dueBadge(t) {
+            const today = todayStr();
+            if (!t.due) return t.done ? '' : `<span class="due" onclick="editDue('${t.id}', this)" title="設定期限">+ 期限</span>`;
+            const cls = t.done ? '' : (t.due < today ? 'overdue' : (t.due === today ? 'today' : ''));
+            const label = t.due === today ? '今天' : t.due.slice(5);
+            return `<span class="due ${cls}" onclick="editDue('${t.id}', this)" title="期限 ${t.due}${cls === 'overdue' ? '（已過期）' : ''}">${label}</span>`;
+        }
+
+        function itemHtml(t) {
+            return `<li class="todo-item ${t.done ? 'done' : ''}">
+                <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleItem('${t.id}')" aria-label="完成">
+                <span class="todo-text" onclick="editText('${t.id}', this)">${esc(t.text)}</span>
+                ${dueBadge(t)}
+                <button class="icon-btn" onclick="deleteItem('${t.id}')" title="刪除" aria-label="刪除">✕</button>
+            </li>`;
+        }
+
+        function render() {
+            // 未完成：有期限的依日期排在前面，其餘依新增順序
+            const open = items.filter(t => !t.done).map((t, i) => ({ t, i }))
+                .sort((a, b) => (a.t.due || '9999') < (b.t.due || '9999') ? -1 : (a.t.due || '9999') > (b.t.due || '9999') ? 1 : a.i - b.i)
+                .map(x => x.t);
+            const done = items.filter(t => t.done).reverse();
+
+            document.getElementById('open-list').innerHTML = open.length
+                ? open.map(itemHtml).join('')
+                : `<li class="empty">${done.length ? '全部完成了 🎉' : '目前沒有待辦事項，在上方輸入第一件事吧。'}</li>`;
+
+            document.getElementById('done-section').hidden = !done.length;
+            document.getElementById('toggle-done').textContent = `${showDone ? '▾' : '▸'} 已完成 (${done.length})`;
+            const doneList = document.getElementById('done-list');
+            doneList.hidden = !showDone;
+            doneList.innerHTML = done.map(itemHtml).join('');
+        }
+    </script>
+</body>
+</html>

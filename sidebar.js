@@ -21,6 +21,9 @@ document.addEventListener("DOMContentLoaded", function() {
             <h2>DBC OP SYSTEM</h2>
             <div class="sidebar-scroll">
 
+                <!-- 個人 (所有登入者) -->
+                ${user ? `<button class="menu-btn" onclick="location.href='todo.html'" id="nav-todo">[ 我的待辦 ]</button>` : ''}
+
                 <!-- 獨立功能區 -->
                 ${can('attendance_query') ? `<button class="menu-btn" onclick="location.href='index.html'" id="nav-index">[ 每日人數查詢 ]</button>` : ''}
                 ${can('attendance_import') ? `<button class="menu-btn" onclick="location.href='attendance.html'" id="nav-attendance">[ 人數回報匯入 ]</button>` : ''}
@@ -71,7 +74,8 @@ document.addEventListener("DOMContentLoaded", function() {
         'b2b_settings.html': { btn: 'nav-b2b', sub: 'nav-b2b-settings', menu: 'b2b-menu' },
         'op_room_jp.html': { btn: 'nav-room', sub: 'nav-room-jp', menu: 'room-menu' },
         'op_room_kr.html': { btn: 'nav-room', sub: 'nav-room-kr', menu: 'room-menu' },
-        'admin.html': { btn: 'nav-admin' }
+        'admin.html': { btn: 'nav-admin' },
+        'todo.html': { btn: 'nav-todo' }
     };
 
     const activeItem = pathMap[currentPath];

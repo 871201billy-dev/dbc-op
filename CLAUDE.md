@@ -19,6 +19,7 @@
 | `sidebar.js` | 側邊欄 (依權限顯示)、手機版上方標題列與滑出選單 |
 | `login.html` / `admin.html` | Google 登入頁 / 帳號管理 (使用者、角色、個人權限) |
 | `privacy.html` | 隱私權政策 (Google OAuth 發布需要) |
+| `todo.html` | 我的待辦：每人只看得到自己的，資料在「DBC OP 帳號權限」試算表的「待辦事項」工作表 (登入驗證中心 GAS 的 todo* action，依通行證 email 區分)；所有登入者可用 (auth.js OPEN_PAGES) |
 
 頁面與權限：`index.html` attendance_query、`attendance.html` attendance_import、`b2b_monitor.html` b2b_monitor、`b2b_settings.html` b2b_settings、`op_room_jp.html` room_jp、`op_room_kr.html` room_kr、`admin.html` admin。新增頁面時要同時改 `auth.js` 的 PAGE_PERMS、`sidebar.js`、登入驗證中心 GAS 的 FEATURES。
 

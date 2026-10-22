@@ -43,8 +43,8 @@
 
         function goNext() {
             const next = params.get('next');
-            const safeNext = next && AUTH.pagePerms[next.split('?')[0]];
-            location.replace(safeNext ? next : (AUTH.firstAllowedPage() || 'index.html'));
+            const safeNext = next && AUTH.canOpen(next.split('?')[0]);
+            location.replace(safeNext ? next : (AUTH.firstAllowedPage() || 'todo.html'));
         }
 
         function initGoogle() {
@@ -66,8 +66,8 @@
                 const pages = AUTH.pagePerms;
                 const first = Object.keys(pages).find(p => res.user.perms.indexOf(pages[p]) >= 0);
                 const next = params.get('next');
-                const nextOk = next && pages[next.split('?')[0]] && res.user.perms.indexOf(pages[next.split('?')[0]]) >= 0;
-                location.replace(nextOk ? next : first);
+                const nextOk = next && AUTH.canOpen(next.split('?')[0], res.user.perms);
+                location.replace(nextOk ? next : (first || 'todo.html'));
             })
             .catch(err => show('網路錯誤：' + err.message, 'error'));
         }

@@ -17,6 +17,8 @@
         'op_room_kr.html': 'room_kr',
         'admin.html': 'admin'
     };
+    // 所有登入者都能使用的頁面 (不需要特定權限)
+    const OPEN_PAGES = ['todo.html'];
 
     function load() {
         try {
@@ -32,7 +34,9 @@
         user: auth ? auth.user : null,
         token: auth ? auth.token : null,
         pagePerms: PAGE_PERMS,
+        openPages: OPEN_PAGES,
         has: perm => !!(auth && auth.user.perms.indexOf(perm) >= 0),
+        canOpen: (p, perms) => OPEN_PAGES.indexOf(p) >= 0 || (!!PAGE_PERMS[p] && (perms || (auth ? auth.user.perms : [])).indexOf(PAGE_PERMS[p]) >= 0),
         firstAllowedPage: () => Object.keys(PAGE_PERMS).find(p => auth && auth.user.perms.indexOf(PAGE_PERMS[p]) >= 0),
         save: data => { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {} },
         logout: reason => {
@@ -60,7 +64,7 @@
     const need = PAGE_PERMS[page];
     if (need && !AUTH.has(need)) {
         const first = AUTH.firstAllowedPage();
-        redirect(first ? first : 'login.html?reason=denied');
+        redirect(first || 'todo.html');
         return;
     }
 
