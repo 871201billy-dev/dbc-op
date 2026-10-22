@@ -26,6 +26,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
 
             </div>
+            <div class="sidebar-bottom">
+                <button class="menu-btn" onclick="openThemePanel()" id="nav-theme">[ 介面設定 ]</button>
+            </div>
         </nav>
     `;
 

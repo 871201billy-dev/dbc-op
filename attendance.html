@@ -7,73 +7,52 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+    <link rel="stylesheet" href="common.css">
+    <script src="theme.js"></script>
     <style>
-        /* ========================================================= */
-        /* ✅ 全域變數與字體設定 (與 index.html 完全一致) */
-        /* ========================================================= */
-        :root { 
-            --bg: #050505; 
-            --sidebar: #0a0a0a; 
-            --accent: #00ffcc; 
-            --text: #c9d1d9; 
-            --border: #1f1f1f; 
-            --menu-hover: #161b22;
-            --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            --font-mono: 'Consolas', 'Courier New', monospace;
-        }
-        body { margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text); font-family: var(--font-main); overflow: hidden; letter-spacing: 0.5px; }
-        
-        /* ========================================================= */
-        /* ✅ 側邊欄共用外殼樣式 (已完美對齊 index.html 的最新版) */
-        /* ========================================================= */
-        nav { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; }
-        nav h2 { color: var(--accent); font-family: var(--font-main); font-size: 1.1rem; margin: 30px 25px; letter-spacing: 2px; font-weight: 600; text-transform: uppercase; }
-        .sidebar-scroll { flex: 1; overflow-y: auto; padding: 0 15px 20px 15px; }
-        .menu-btn { width: 100%; background: none; color: #8b949e; border: none; padding: 14px 20px; margin: 4px 0; text-align: left; font-size: 0.9rem; cursor: pointer; border-radius: 4px; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; font-weight: 500; letter-spacing: 1px; }
-        .menu-btn:hover { background: var(--menu-hover); color: #ffffff; padding-left: 25px; }
-        .menu-btn.active { border-left: 2px solid var(--accent); color: #ffffff; background: var(--menu-hover); }
-        .submenu { display: none; margin-bottom: 10px; border-left: 1px solid var(--border); margin-left: 20px; }
-        .submenu.show { display: block; }
-        .submenu a { display: block; color: #6e7681; text-decoration: none; padding: 10px 15px 10px 20px; font-size: 0.85rem; transition: 0.3s; letter-spacing: 0.5px; }
-        .submenu a:hover { color: var(--accent); }
-        .submenu a.current { color: #ffffff; }
-        .submenu a::before { content: "› "; color: var(--border); margin-right: 8px; transition: 0.3s; }
-        .submenu a:hover::before { color: var(--accent); }
-
         /* 右側主視窗 */
         main { flex: 1; padding: 40px; overflow-y: auto; }
-
-        /* ========================================================= */
-        /* ✅ 專屬於「人數回報匯入區」的介面設計 */
-        /* ========================================================= */
-        .attendance-card { 
-            background: #0a0a0a; padding: 40px; border-radius: 4px; 
-            border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.8); 
-            max-width: 800px; margin: 0 auto; 
-        }
-        .attendance-card h1 { 
-            margin-top: 0; color: #ffffff; font-weight: 300; 
-            letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 25px; 
-        }
-        .terminal-box { 
-            background: #000000; border: 1px solid var(--border); padding: 20px; 
-            border-radius: 4px; font-family: var(--font-mono); 
-            font-size: 0.85rem; color: #8b949e; line-height: 1.8; margin-bottom: 30px; 
-        }
+        .attendance-card { background: var(--surface); padding: 40px; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 20px 40px var(--shadow); max-width: 900px; margin: 0 auto; margin-bottom: 50px; }
+        .attendance-card h1 { margin-top: 0; color: var(--text-strong); font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 25px; }
+        .terminal-box { background: var(--input-bg); border: 1px solid var(--border); padding: 20px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); line-height: 1.8; margin-bottom: 30px; }
         .terminal-box span.highlight { color: var(--accent); }
         
         /* 拖曳上傳區 */
-        .upload-area { 
-            border: 2px dashed #30363d; padding: 60px 20px; text-align: center; 
-            background: #050505; cursor: pointer; transition: 0.3s; 
-            border-radius: 4px; display: block;
-        }
-        .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: #111; }
+        .upload-area { border: 2px dashed var(--border-strong); padding: 60px 20px; text-align: center; background: var(--bg); cursor: pointer; transition: 0.3s; border-radius: 4px; display: block; margin-bottom: 10px; }
+        .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: var(--surface-2); }
         .upload-area input[type="file"] { display: none; }
-        .upload-text { font-family: var(--font-mono); font-size: 1.1rem; color: #8b949e; pointer-events: none; margin-top: 15px; }
+        .upload-text { font-family: var(--font-mono); font-size: 1.1rem; color: var(--muted); pointer-events: none; margin-top: 15px; }
         .upload-icon { font-size: 3rem; display: block; }
+        .status-text { text-align: center; color: var(--accent); font-family: var(--font-mono); margin-top: 15px; font-size: 0.95rem; min-height: 24px; }
+
+        /* 設定區塊樣式 */
+        .section-wrapper { border: 1px solid var(--border); margin-top: 40px; border-radius: 4px; overflow: hidden; }
+        .section-header { background: var(--surface-2); padding: 20px 25px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--border); transition: 0.3s; }
+        .section-header:hover { background: var(--surface-3); border-left-color: var(--accent); }
+        .section-header h2 { margin: 0; font-size: 1rem; color: var(--accent); font-family: var(--font-mono); letter-spacing: 2px; text-transform: uppercase; }
+        .section-body { display: none; padding: 25px; background: var(--surface); border-top: 1px solid var(--border); }
+        .section-body.show { display: block; }
+
+        .item-card { border: 1px solid var(--border); background: var(--bg); border-radius: 2px; margin-bottom: 8px; transition: 0.3s; }
+        .item-header { padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
+        .item-header:hover { background: var(--surface); color: var(--text-strong); }
+        .item-content { display: none; padding: 20px; border-top: 1px dashed var(--border); }
+        .item-content.show { display: block; }
         
-        .status-text { text-align: center; color: var(--accent); font-family: var(--font-mono); margin-top: 25px; font-size: 0.95rem; min-height: 24px; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 15px; }
+        .input-group label { color: var(--muted-2); font-size: 0.75rem; margin-bottom: 5px; display: block; font-family: var(--font-mono); }
+        input[type="text"], select { width: 100%; padding: 8px; background: var(--input-bg); border: 1px solid var(--border); color: var(--text-strong); font-size: 0.9rem; border-radius: 2px; box-sizing: border-box; }
+        
+        .primary-btn { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 6px 15px; cursor: pointer; font-size: 0.85rem; transition: 0.2s; font-family: var(--font-mono); border-radius: 2px; }
+        .primary-btn:hover { background: var(--accent); color: var(--accent-contrast); }
+        .save-btn { background: transparent; color: #3fb950; border: 1px solid #3fb950; padding: 12px; font-family: var(--font-mono); cursor: pointer; width: 100%; margin-top: 20px; transition: 0.2s; font-size: 0.9rem; border-radius: 2px; }
+        .save-btn:hover { background: #3fb950; color: #000; }
+        .del-btn { background: transparent; color: #da3633; border: 1px solid #da3633; padding: 4px 10px; cursor: pointer; font-size: 0.75rem; transition: 0.2s; border-radius: 2px; }
+        .del-btn:hover { background: #da3633; color: #fff; }
+
+        .unsaved-card { border-color: #d29922 !important; box-shadow: 0 0 8px rgba(210,153,34,0.2); }
+        .unsaved-card .item-header { color: #d29922; }
+        .unsaved-btn { background: rgba(210,153,34,0.1) !important; color: #d29922 !important; border-color: #d29922 !important; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -90,41 +69,61 @@
                 > <span class="highlight">執行動作：</span>系統將自動解析、覆寫資料庫，並觸發 GAS 引擎自動產出今日的人數回報表。
             </div>
 
+            <!-- 上傳區塊 -->
             <label class="upload-area" id="drop-zone">
                 <input type="file" id="file-input" accept=".xlsx, .xls, .csv">
                 <span class="upload-icon">📊</span>
                 <div class="upload-text" id="upload-label">> 點擊選擇檔案，或將 Excel 拖曳至此處 <</div>
             </label>
-
             <div id="status-box" class="status-text"></div>
+
+            <!-- 團號捕捉規則設定區塊 -->
+            <div class="section-wrapper">
+                <div class="section-header" onclick="toggleSection('body-settings')">
+                    <h2>⚙️ 團號捕捉規則設定 (報表設定)</h2>
+                    <span class="section-arrow" id="arrow-body-settings" style="color: var(--muted); font-family:var(--font-mono); font-size:0.85rem;">[ 展開 EXPAND ]</span>
+                </div>
+                <div class="section-body" id="body-settings">
+                    <div style="margin-bottom: 15px; text-align: right;">
+                        <button class="primary-btn" onclick="addSettingCard()">[ + 新增分類規則 ]</button>
+                    </div>
+                    
+                    <div id="settings-list">
+                        <p style="color: var(--muted); font-size:0.85rem; text-align:center;">[ 讀取中... ]</p>
+                    </div>
+                    
+                    <button class="save-btn" onclick="saveSettings()">[ 儲存並覆寫規則至伺服器 ]</button>
+                    <div id="settings-status" class="status-text" style="text-align: right; margin-top: 10px;"></div>
+                </div>
+            </div>
+
         </div>
     </main>
 
+    <script src="config.js"></script>
     <script src="sidebar.js"></script>
 
     <script>
-        // ✅ 您提供的最終版 API 網址
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxXNtscCW2ZDxrVsx6Yti4t5zmkF3MVEQ9TJ9LKthv-Fz-F__vkUGhoREQd_QkD-24KNw/exec"; 
+        const GAS_API_URL = GAS_API.ATTENDANCE; // 網址設定在 config.js
 
+        // ==========================================
+        // 1. 檔案上傳邏輯
+        // ==========================================
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const uploadLabel = document.getElementById('upload-label');
         const statusBox = document.getElementById('status-box');
 
-        // 拖曳視覺效果
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault(); dropZone.classList.remove('dragover');
             if (e.dataTransfer.files.length) processExcel(e.dataTransfer.files[0]);
         });
-        
-        // 點擊選擇檔案
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length) processExcel(e.target.files[0]);
         });
 
-        // 讀取與解析 Excel
         function processExcel(file) {
             uploadLabel.innerText = `> 正在解析檔案: ${file.name} <`;
             statusBox.style.color = "var(--accent)";
@@ -138,7 +137,6 @@
                     const sheet = workbook.Sheets[workbook.SheetNames[0]]; 
                     let jsonMatrix = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
                     
-                    // 防呆：修正不規則陣列長度
                     let maxCols = 0;
                     jsonMatrix.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
                     const cleanMatrix = jsonMatrix.map(row => {
@@ -156,7 +154,6 @@
             reader.readAsBinaryString(file);
         }
 
-        // 傳送資料至後端 GAS
         function uploadToGAS(matrix) {
             statusBox.innerText = "> SYSTEM: 🚀 上傳至伺服器並執行自動核算中...";
             fetch(GAS_API_URL, { 
@@ -175,6 +172,146 @@
             }).catch(err => {
                 statusBox.style.color = "#da3633";
                 statusBox.innerText = "> ERROR: ❌ 網路連線錯誤！請確認網路狀態。";
+            });
+        }
+
+        // ==========================================
+        // 2. 團號捕捉規則設定邏輯
+        // ==========================================
+        window.onload = () => { fetchSettings(); };
+
+        function toggleSection(id) {
+            const body = document.getElementById(id);
+            body.classList.toggle('show');
+            document.getElementById('arrow-' + id).innerText = body.classList.contains('show') ? '[ 收合 COLLAPSE ]' : '[ 展開 EXPAND ]';
+        }
+
+        function markAsUnsaved(el) {
+            el.closest('.item-card').classList.add('unsaved-card');
+            const btn = el.closest('.section-body').querySelector('.save-btn');
+            if(!btn.classList.contains('unsaved-btn')) {
+                btn.classList.add('unsaved-btn');
+                if(!btn.dataset.orig) btn.dataset.orig = btn.innerText;
+                btn.innerText = btn.dataset.orig.replace('[ ', '[ ⚠️ 未儲存 | ');
+            }
+        }
+
+        function clearUnsaved(btn) {
+            btn.closest('.section-body').querySelectorAll('.unsaved-card').forEach(c => c.classList.remove('unsaved-card'));
+            btn.classList.remove('unsaved-btn');
+            btn.innerText = btn.dataset.orig || btn.innerText;
+        }
+
+        function fetchSettings() {
+            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "getSettings" }) })
+            .then(res => res.json())
+            .then(res => {
+                if(res.status === 'success') {
+                    renderSettings(res.data);
+                } else {
+                    document.getElementById('settings-list').innerHTML = `<p style="color: #da3633;">讀取失敗: ${res.message}</p>`;
+                }
+            }).catch(err => {
+                document.getElementById('settings-list').innerHTML = `<p style="color: #da3633;">網路連線異常</p>`;
+            });
+        }
+
+        function renderSettings(data) {
+            const container = document.getElementById('settings-list');
+            container.innerHTML = '';
+            
+            if(data.length <= 1) {
+                container.innerHTML = '<p style="color: var(--muted); font-size:0.85rem; text-align:center;">[ 尚無規則，請點擊上方新增 ]</p>';
+                return;
+            }
+            
+            // 跳過第一列(表頭)，渲染資料
+            data.slice(1).forEach(row => createSettingCard(row));
+        }
+
+        function addSettingCard() {
+            const container = document.getElementById('settings-list');
+            if(container.innerHTML.includes('尚無規則')) container.innerHTML = '';
+            createSettingCard(['新分類', '一般', ''], true);
+        }
+
+        function createSettingCard(row, isOpen = false) {
+            const div = document.createElement('div'); 
+            div.className = 'item-card setting-item';
+            
+            div.innerHTML = `
+                <div class="item-header" onclick="this.nextElementSibling.classList.toggle('show')">
+                    <span class="s-title">> 分類: ${row[0] || '未命名'} [${row[1] || '一般'}]</span>
+                    <span>[ EDIT ]</span>
+                </div>
+                <div class="item-content ${isOpen ? 'show' : ''}">
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label>行程分類名稱</label>
+                            <input type="text" class="s-name" value="${row[0] || ''}" oninput="markAsUnsaved(this); syncTitle(this)">
+                        </div>
+                        <div class="input-group">
+                            <label>分類類型</label>
+                            <select class="s-type" onchange="markAsUnsaved(this); syncTitle(this)">
+                                <option value="一般" ${row[1] === '一般' ? 'selected' : ''}>一般</option>
+                                <option value="課程" ${row[1] === '課程' ? 'selected' : ''}>課程</option>
+                                <option value="同業" ${row[1] === '同業' ? 'selected' : ''}>同業</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>團號前綴 (多個請用半形逗號 , 隔開)</label>
+                            <input type="text" class="s-prefix" value="${row[2] || ''}" oninput="markAsUnsaved(this)">
+                        </div>
+                    </div>
+                    <div style="text-align:right; margin-top:15px;">
+                        <button class="del-btn" onclick="markAsUnsaved(this); this.closest('.item-card').remove()">[ 刪除此規則 ]</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('settings-list').appendChild(div);
+        }
+
+        function syncTitle(el) {
+            const card = el.closest('.item-card');
+            const name = card.querySelector('.s-name').value || '未命名';
+            const type = card.querySelector('.s-type').value;
+            card.querySelector('.s-title').innerText = `> 分類: ${name} [${type}]`;
+        }
+
+        function saveSettings() {
+            const btn = document.getElementById('settings-status'); 
+            btn.innerText = "> 儲存中，請稍候...";
+            btn.style.color = "var(--accent)";
+            
+            // 準備要傳給後端的 2D 陣列 (包含表頭)
+            const dataToSave = [["行程分類名稱", "分類類型 (一般/課程)", "團號前綴 (多個請用半形逗號 , 隔開)"]];
+            
+            document.querySelectorAll('.setting-item').forEach(card => {
+                const name = card.querySelector('.s-name').value.trim();
+                const type = card.querySelector('.s-type').value;
+                const prefix = card.querySelector('.s-prefix').value.trim();
+                if(name) { // 確保名稱不為空才存入
+                    dataToSave.push([name, type, prefix]);
+                }
+            });
+
+            fetch(GAS_API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "saveSettings", tableData: dataToSave }) 
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    btn.innerText = "> [ 成功 ] " + data.message;
+                    btn.style.color = "#3fb950";
+                    clearUnsaved(document.querySelector('#body-settings .save-btn'));
+                } else {
+                    btn.innerText = "> [ 錯誤 ] " + data.message;
+                    btn.style.color = "#da3633";
+                }
+            }).catch(err => {
+                btn.innerText = "> [ 錯誤 ] 網路連線異常";
+                btn.style.color = "#da3633";
             });
         }
     </script>
