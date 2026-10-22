@@ -140,15 +140,13 @@
                 return;
             }
 
-            // 找出哪一欄是空白分隔欄 (通常在 "課程" 的前一欄)
-            let spacerColIndex = -1;
-            if (matrix[1]) {
-                spacerColIndex = matrix[1].findIndex(cell => cell === "");
-            }
+            // 找出空白分隔欄：表頭列空白的欄位 (行程 / 課程 / 同業專案 各區塊之間，最多兩欄)
+            const spacerCols = new Set();
+            if (matrix[1]) matrix[1].forEach((cell, i) => { if (i > 0 && cell === "") spacerCols.add(i); });
 
             matrix.forEach((row, rowIndex) => {
                 const tr = document.createElement('tr');
-                
+
                 // 判斷列的樣式
                 if (rowIndex === 0) tr.className = 'row-date';
                 else if (rowIndex === 1) tr.className = 'row-header';
@@ -157,14 +155,17 @@
 
                 row.forEach((cell, colIndex) => {
                     const td = document.createElement(rowIndex <= 1 ? 'th' : 'td');
-                    
+
                     // 處理合併儲存格 (日期列)
                     if (rowIndex === 0) {
-                        if (cell !== "") {
-                            // 計算要跨幾欄 (直到遇到下一個有值的格子或陣列結束)
+                        if (spacerCols.has(colIndex)) {
+                            td.className = 'col-spacer';
+                            tr.appendChild(td);
+                        } else if (cell !== "") {
+                            // 計算要跨幾欄 (直到遇到下一個有值的格子、分隔欄或陣列結束)
                             let colspan = 1;
                             for (let i = colIndex + 1; i < row.length; i++) {
-                                if (row[i] === "") colspan++;
+                                if (row[i] === "" && !spacerCols.has(i)) colspan++;
                                 else break;
                             }
                             td.colSpan = colspan;
@@ -174,7 +175,7 @@
                     } else {
                         td.innerText = cell;
                         // 套用空白分隔欄樣式
-                        if (colIndex === spacerColIndex) {
+                        if (spacerCols.has(colIndex)) {
                             td.className = 'col-spacer';
                             td.innerText = ''; // 清空內容
                         }

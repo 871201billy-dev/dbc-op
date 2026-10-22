@@ -260,7 +260,7 @@
                             </select>
                         </div>
                         <div class="input-group">
-                            <label>團號前綴 (多個請用半形逗號 , 隔開)</label>
+                            <label>團號前綴 (多個用半形逗號 , 隔開；可用 * 萬用字元，如 S4-*-B2B*)</label>
                             <input type="text" class="s-prefix" value="${row[2] || ''}" oninput="markAsUnsaved(this)">
                         </div>
                     </div>
@@ -285,7 +285,7 @@
             btn.style.color = "var(--accent)";
             
             // 準備要傳給後端的 2D 陣列 (包含表頭)
-            const dataToSave = [["行程分類名稱", "分類類型 (一般/課程)", "團號前綴 (多個請用半形逗號 , 隔開)"]];
+            const dataToSave = [["行程分類名稱", "分類類型 (一般/課程/同業)", "團號前綴 (多個請用半形逗號 , 隔開)"]];
             
             document.querySelectorAll('.setting-item').forEach(card => {
                 const name = card.querySelector('.s-name').value.trim();

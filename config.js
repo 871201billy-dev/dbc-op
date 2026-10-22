@@ -9,7 +9,7 @@ const GAS_API = {
     AUTH: "https://script.google.com/macros/s/AKfycbzkU3mDH6WW6LfT9wUlALln-QDHSJD1tamfarSbcYSF3Um9m7agCrFSqq_Km79iDQQ1/exec",
 
     // 人數回報 (index.html, attendance.html)
-    ATTENDANCE: "https://script.google.com/macros/s/AKfycbxXNtscCW2ZDxrVsx6Yti4t5zmkF3MVEQ9TJ9LKthv-Fz-F__vkUGhoREQd_QkD-24KNw/exec",
+    ATTENDANCE: "https://script.google.com/macros/s/AKfycbwEvMTsG1Qa7-9guOxwryGNbacOBXZuWskES9WLY7MMB2YkYNXKvTeTYVSEKdOkYln9/exec",
 
     // B2B 同業系統 (b2b_monitor.html, b2b_settings.html)
     B2B: "https://script.google.com/macros/s/AKfycbx6T_sZl5cNVbPZ23cCaH9amZ8N8d-abZl2Zzu5WwKMNcgbioDHzN-Qy_94e8qm0j8M/exec",
