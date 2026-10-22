@@ -52,7 +52,7 @@ GAS 原始碼不在 repo 裡 (`gas_下載/` 已被 .gitignore 排除，因含金
 | 房控 原版 (計算邏輯參考，勿改) | `104HQJJVPDtbMBTk8skVr7U02YOEvWNnSt80eghpuHLSmbMZzaZ7RmE4m` | — | — |
 | 人數回報「每日人數-claude整合版」(綁定試算表；選單「自動報表」與網站共用 runReport) | `1ros8-g3tMb6RBbAtZuHfcFLSRwrzdtnMnq02-pvPBgqLtnaA2ubLxsq7` | `AKfycbwEvMTsG1Qa7-9guOxwryGNbacOBXZuWskES9WLY7MMB2YkYNXKvTeTYVSEKdOkYln9` | ✅ |
 | 人數回報 舊版 (Gemini 改寫，已停用) | 不明 | `AKfycbxXNtscCW2ZDxrVsx6Yti4t5zmkF3MVEQ9TJ9LKthv-Fz-F__vkUGhoREQd_QkD-24KNw` | — |
-| B2B (綁定試算表) | 尚未取得 | `AKfycbx6T_sZl5cNVbPZ23cCaH9amZ8N8d-abZl2Zzu5WwKMNcgbioDHzN-Qy_94e8qm0j8M` | ❌ 暫緩 |
+| B2B (綁定試算表；目前無需求，不在計畫中) | 尚未取得 | `AKfycbx6T_sZl5cNVbPZ23cCaH9amZ8N8d-abZl2Zzu5WwKMNcgbioDHzN-Qy_94e8qm0j8M` | — |
 
 更新 GAS：改程式 → `clasp push` → `clasp deploy -i <正式部署 ID> -d "說明"` (部署 ID 不變，網址就不變)。
 改動大的話先用新部署測試，確認後再更新正式部署；舊版本可用 `clasp deploy -i <ID> -V <版本號>` 切回。
@@ -95,5 +95,7 @@ GAS 原始碼不在 repo 裡 (`gas_下載/` 已被 .gitignore 排除，因含金
 - 產出格式：網頁表格、匯出 Excel、報表圖片？
 
 ### 3. 既有待辦
-- B2B：GAS 後端權限檢查暫緩 (需要 B2B 試算表的指令碼 ID)
 - 提醒使用者把所有同事加入「帳號管理」
+
+### 不在計畫中
+- B2B 同業系統：當初為了洽談中的廠商而做，目前沒有需求。頁面維持現狀，不需修改、優化或加後端權限檢查，除非使用者主動提出。
