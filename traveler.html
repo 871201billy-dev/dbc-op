@@ -101,14 +101,14 @@
 
             <div class="upload-bar" id="upload-bar" hidden>
                 <span class="label">更新資料：</span>
-                <label class="ghost-btn" title="ERP 路徑：d-c-團體加購紀錄表">① 上傳「團體加購紀錄表」<input type="file" accept=".xlsx,.xls" hidden onchange="uploadFile(this, 'erp')"></label>
-                <label class="ghost-btn" title="ERP 路徑：k-z-A.參團旅客應收明細表">② 上傳「參團旅客應收明細表」<input type="file" accept=".xlsx,.xls" multiple hidden onchange="uploadFile(this, 'pay')"></label>
+                <label class="ghost-btn" title="科威路徑：D-C-團體加購紀錄表">① 上傳「團體加購紀錄表」<input type="file" accept=".xlsx,.xls" hidden onchange="uploadFile(this, 'erp')"></label>
+                <label class="ghost-btn" title="科威路徑：K-Z-A.參團旅客應收明細表">② 上傳「參團旅客應收明細表」<input type="file" accept=".xlsx,.xls" multiple hidden onchange="uploadFile(this, 'pay')"></label>
                 <button class="ghost-btn" onclick="toggleSettings()">⚙ 行程分類設定</button>
                 <details class="erp-help">
-                    <summary>這兩份報表在 ERP 哪裡下載？</summary>
+                    <summary>這兩份報表在科威哪裡下載？</summary>
                     <ol>
-                        <li><b>團體加購紀錄表</b>：用來檢查旅客資料是否完整、護照效期。<br><span class="erp-path">ERP 路徑：d-c-團體加購紀錄表</span></li>
-                        <li><b>參團旅客應收明細表</b>：用來更新尾款清 / 未清，範圍大時可以分段下載、分次上傳。<br><span class="erp-path">ERP 路徑：k-z-A.參團旅客應收明細表</span></li>
+                        <li><b>團體加購紀錄表</b>：用來檢查旅客資料是否完整、護照效期。<br><span class="erp-path">科威路徑：D-C-團體加購紀錄表</span></li>
+                        <li><b>參團旅客應收明細表</b>：用來更新尾款清 / 未清，範圍大時可以分段下載、分次上傳。<br><span class="erp-path">科威路徑：K-Z-A.參團旅客應收明細表</span></li>
                     </ol>
                 </details>
                 <div class="upload-msg" id="upload-msg">也可以直接把 Excel 拖曳到這個頁面 (例如從瀏覽器的下載清單)，系統會自動判斷是哪一種報表。Excel 只在這台電腦的瀏覽器裡解析，只會上傳遮罩姓名與檢查結果。</div>
@@ -187,7 +187,7 @@
             if (!list.length) {
                 sel.innerHTML = '<option>尚無資料</option>';
                 rows = [];
-                document.getElementById('tbody').innerHTML = `<tr><td class="empty">還沒有旅客資料${meta && meta.canUpload ? '，請先上傳「團體加購紀錄表」(ERP d-c)' : '，請等有上傳權限的同事上傳「團體加購紀錄表」'}。</td></tr>`;
+                document.getElementById('tbody').innerHTML = `<tr><td class="empty">還沒有旅客資料${meta && meta.canUpload ? '，請先上傳「團體加購紀錄表」(科威 D-C)' : '，請等有上傳權限的同事上傳「團體加購紀錄表」'}。</td></tr>`;
                 return;
             }
             sel.innerHTML = list.map(d => {
@@ -375,7 +375,7 @@
                 .then(buf => {
                     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
                     kind = kind || detectKind(wb);
-                    if (!kind) throw new Error(`「${file.name}」看起來不是團體加購紀錄表 (d-c) 或參團旅客應收明細表 (k-z-A)，找不到對應的欄位`);
+                    if (!kind) throw new Error(`「${file.name}」看起來不是團體加購紀錄表 (D-C) 或參團旅客應收明細表 (K-Z-A)，找不到對應的欄位`);
                     return kind === 'erp' ? TravelerParse.parseErp(XLSX, wb) : TravelerParse.parsePayment(XLSX, wb);
                 })
                 .then(parsed => {
