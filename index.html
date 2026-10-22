@@ -56,6 +56,15 @@
         /* 報表圖片按鈕 (查到資料後才出現) */
         .report-actions { display: flex; gap: 10px; margin-left: auto; }
         .report-actions[hidden] { display: none; }
+
+        /* 首頁區塊 */
+        .home-section { margin-bottom: 44px; }
+        .home-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+        .home-title h2 { margin: 0; color: var(--accent); font-family: var(--font-mono); font-size: 1rem; letter-spacing: 2px; font-weight: 600; }
+        .home-title a { color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; text-decoration: none; }
+        .home-title a:hover { color: var(--accent); }
+        .home-badge { display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 10px; background: #da3633; color: #fff; font-size: 0.72rem; letter-spacing: 0; vertical-align: middle; }
+        .home-status { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted-2); min-height: 1em; }
     </style>
 </head>
 <body>
@@ -64,8 +73,21 @@
 
     <main>
         <div class="content-card">
-            <h1>[ 系統總覽 - 每日人數查詢 ]</h1>
-            
+            <h1>[ 首頁 ]</h1>
+
+            <!-- 交接給我的 (所有登入者) -->
+            <div class="home-section">
+                <div class="home-title">
+                    <h2>// 交接給我的 <span class="home-badge" id="ho-new-count" hidden></span></h2>
+                    <a href="todo.html#handover">[ + 新增交接 / 查看全部 ]</a>
+                </div>
+                <div id="home-handovers"></div>
+                <div class="home-status" id="ho-status"></div>
+            </div>
+
+            <!-- 每日人數查詢 (需要 attendance_query 權限) -->
+            <div id="attendance-section" hidden>
+            <div class="home-title"><h2>// 每日人數查詢</h2></div>
             <div class="terminal-box" id="sys-log">
                 > 系統核心模組已載入。<br>
                 > 請選擇日期，以查詢當日各行程之出團人數統計。
@@ -87,11 +109,27 @@
                     </tbody>
                 </table>
             </div>
+            </div>
         </div>
     </main>
 
     <script src="config.js"></script>
     <script src="sidebar.js"></script>
+    <script src="handover.js"></script>
+    <script>
+        // ===== 首頁：交接給我的 (只列進行中) =====
+        Handover.mount(document.getElementById('home-handovers'), { filter: 'incoming', open: true, statusEl: document.getElementById('ho-status'), emptyText: '目前沒有交接給你的事項 👍' });
+        Handover.onChange(items => {
+            const n = items.filter(h => Handover.isIncoming(h) && h.status !== 'done' && Handover.isNew(h)).length;
+            const badge = document.getElementById('ho-new-count');
+            badge.hidden = !n;
+            badge.textContent = `${n} 則新動態`;
+        });
+        Handover.load();
+
+        // 有人數查詢權限才顯示每日人數查詢
+        document.getElementById('attendance-section').hidden = !AUTH.has('attendance_query');
+    </script>
     <script>
         const GAS_API_URL = GAS_API.ATTENDANCE; // 網址設定在 config.js
 

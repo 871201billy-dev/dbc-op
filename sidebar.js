@@ -21,11 +21,11 @@ document.addEventListener("DOMContentLoaded", function() {
             <h2>DBC OP SYSTEM</h2>
             <div class="sidebar-scroll">
 
-                <!-- 個人 (所有登入者) -->
-                ${user ? `<button class="menu-btn" onclick="location.href='todo.html'" id="nav-todo">[ 我的待辦 ]</button>` : ''}
+                <!-- 首頁、待辦與交接 (所有登入者) -->
+                <button class="menu-btn" onclick="location.href='index.html'" id="nav-index">[ 首頁 ]</button>
+                ${user ? `<button class="menu-btn" onclick="location.href='todo.html'" id="nav-todo">[ 待辦與交接 ]</button>` : ''}
 
                 <!-- 獨立功能區 -->
-                ${can('attendance_query') ? `<button class="menu-btn" onclick="location.href='index.html'" id="nav-index">[ 每日人數查詢 ]</button>` : ''}
                 ${can('attendance_import') ? `<button class="menu-btn" onclick="location.href='attendance.html'" id="nav-attendance">[ 人數回報匯入 ]</button>` : ''}
 
                 <!-- B2B 同業系統 (下拉選單) -->

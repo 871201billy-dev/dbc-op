@@ -44,7 +44,7 @@
         function goNext() {
             const next = params.get('next');
             const safeNext = next && AUTH.canOpen(next.split('?')[0]);
-            location.replace(safeNext ? next : (AUTH.firstAllowedPage() || 'todo.html'));
+            location.replace(safeNext ? next : 'index.html');
         }
 
         function initGoogle() {
@@ -62,12 +62,10 @@
                 if (res.status !== 'success') { show(res.message || '登入失敗', 'error'); return; }
                 AUTH.save({ token: res.token, exp: res.exp, user: res.user });
                 show(`> 歡迎，${res.user.name}`);
-                // 依權限前往第一個可用的頁面
-                const pages = AUTH.pagePerms;
-                const first = Object.keys(pages).find(p => res.user.perms.indexOf(pages[p]) >= 0);
+                // 回到登入前想去的頁面 (有權限的話)，否則到首頁
                 const next = params.get('next');
                 const nextOk = next && AUTH.canOpen(next.split('?')[0], res.user.perms);
-                location.replace(nextOk ? next : (first || 'todo.html'));
+                location.replace(nextOk ? next : 'index.html');
             })
             .catch(err => show('網路錯誤：' + err.message, 'error'));
         }

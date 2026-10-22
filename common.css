@@ -46,6 +46,9 @@ nav h2 { color: var(--accent); font-family: var(--font-main); font-size: 1.1rem;
 
 input[type="date"]::-webkit-calendar-picker-indicator { filter: var(--icon-filter); cursor: pointer; }
 
+/* hidden 屬性一律隱藏 (避免被 display: inline-block 等樣式蓋掉) */
+[hidden] { display: none !important; }
+
 /* ======== 手機版 (寬度 768px 以下) ======== */
 /* 側邊欄改成從左側滑出的選單，上方加一條標題列；各頁的內距與表格改為適合小螢幕 */
 .mobile-topbar, .nav-backdrop { display: none; }

@@ -19,9 +19,11 @@
 | `sidebar.js` | 側邊欄 (依權限顯示)、手機版上方標題列與滑出選單 |
 | `login.html` / `admin.html` | Google 登入頁 / 帳號管理 (使用者、角色、個人權限) |
 | `privacy.html` | 隱私權政策 (Google OAuth 發布需要) |
-| `todo.html` | 我的待辦：每人只看得到自己的，資料在「DBC OP 帳號權限」試算表的「待辦事項」工作表 (登入驗證中心 GAS 的 todo* action，依通行證 email 區分)；所有登入者可用 (auth.js OPEN_PAGES) |
+| `index.html` | **首頁** (所有登入者)：上方「交接給我的」，下方「每日人數查詢」(有 attendance_query 才顯示) |
+| `todo.html` | 待辦與交接 (所有登入者)，兩個分頁：<br>• 我的待辦：每人只看得到自己的 (「待辦事項」工作表)。先存瀏覽器 (localStorage `opCache:todoLocal:*`) 再用 `todoBatch` 整批同步，未送出的變更在 `opTodoOutbox:*`，下次開啟自動補送<br>• 工作交接：發給特定同事或「所有人」(ALL)，建立者與對象可回覆進度、標記完成；只有建立者能刪除 (「交接」「交接回覆」工作表) |
+| `handover.js` | 工作交接的清單元件，首頁與待辦頁共用；「新」標籤用 localStorage 記錄已讀 |
 
-頁面與權限：`index.html` attendance_query、`attendance.html` attendance_import、`b2b_monitor.html` b2b_monitor、`b2b_settings.html` b2b_settings、`op_room_jp.html` room_jp、`op_room_kr.html` room_kr、`admin.html` admin。新增頁面時要同時改 `auth.js` 的 PAGE_PERMS、`sidebar.js`、登入驗證中心 GAS 的 FEATURES。
+頁面與權限：`index.html`、`todo.html` 所有登入者 (auth.js OPEN_PAGES)、`attendance.html` attendance_import、`b2b_monitor.html` b2b_monitor、`b2b_settings.html` b2b_settings、`op_room_jp.html` room_jp、`op_room_kr.html` room_kr、`admin.html` admin。新增頁面時要同時改 `auth.js` 的 PAGE_PERMS、`sidebar.js`、登入驗證中心 GAS 的 FEATURES。
 
 ## 撰寫慣例
 
@@ -77,14 +79,8 @@ GAS 原始碼不在 repo 裡 (`gas_下載/` 已被 .gitignore 排除，因含金
 
 開始做之前，先跟使用者確認下列「待確認」事項，再依現有慣例實作：新頁面放在側邊欄、加入權限 (auth.js PAGE_PERMS、sidebar.js、登入驗證中心 FEATURES)、後端 GAS 要驗證通行證、顏色用配色變數、支援手機版。
 
-### 1. 交接記事 (新功能，2026-10-22 提出)
-目的：同事之間交接工作事項的紀錄，讓接手的人知道進度與待辦。
-待確認：
-- 交接的單位是什麼？(依團號 / 依出發日 / 依人 / 自由記事)
-- 需要哪些欄位？(例如：事項、相關團號、負責人、接手人、狀態、期限、附件)
-- 是否需要「已讀 / 已處理」標記與提醒？
-- 誰可以看、誰可以編輯？(全部人 / 依角色)
-- 資料要存在哪份試算表？(新建一份或沿用現有)
+### 1. 交接記事 — ✅ 2026-10-22 已上線為「工作交接」(見 todo.html)
+之後可能的延伸：建立者修改交接內容 (後端 handoverSave 已支援，前端尚未做編輯介面)、依團號關聯、附件。
 
 ### 2. 客戶資料及款項整理 (新功能，2026-10-22 提出)
 目的：整理客戶資料與收付款狀況。

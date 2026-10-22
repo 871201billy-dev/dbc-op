@@ -7,9 +7,8 @@
     const STORE_KEY = 'opAuth';
     const CACHE_PREFIX = 'opCache:';
 
-    // 頁面 → 需要的權限 (順序即登入後預設前往的順序)
+    // 頁面 → 需要的權限
     const PAGE_PERMS = {
-        'index.html': 'attendance_query',
         'attendance.html': 'attendance_import',
         'b2b_monitor.html': 'b2b_monitor',
         'b2b_settings.html': 'b2b_settings',
@@ -17,8 +16,8 @@
         'op_room_kr.html': 'room_kr',
         'admin.html': 'admin'
     };
-    // 所有登入者都能使用的頁面 (不需要特定權限)
-    const OPEN_PAGES = ['todo.html'];
+    // 所有登入者都能使用的頁面 (不需要特定權限)；首頁的每日人數查詢區塊另依 attendance_query 顯示
+    const OPEN_PAGES = ['index.html', 'todo.html'];
 
     function load() {
         try {
@@ -37,7 +36,7 @@
         openPages: OPEN_PAGES,
         has: perm => !!(auth && auth.user.perms.indexOf(perm) >= 0),
         canOpen: (p, perms) => OPEN_PAGES.indexOf(p) >= 0 || (!!PAGE_PERMS[p] && (perms || (auth ? auth.user.perms : [])).indexOf(PAGE_PERMS[p]) >= 0),
-        firstAllowedPage: () => Object.keys(PAGE_PERMS).find(p => auth && auth.user.perms.indexOf(PAGE_PERMS[p]) >= 0),
+        firstAllowedPage: () => 'index.html',   // 首頁所有人都能進
         save: data => { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {} },
         logout: reason => {
             try {
@@ -63,8 +62,7 @@
 
     const need = PAGE_PERMS[page];
     if (need && !AUTH.has(need)) {
-        const first = AUTH.firstAllowedPage();
-        redirect(first || 'todo.html');
+        redirect('index.html');
         return;
     }
 

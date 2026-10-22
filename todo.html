@@ -44,6 +44,27 @@
         .link-btn:hover { color: var(--accent); }
         .status { margin-top: 18px; font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted-2); min-height: 1.2em; }
 
+        /* 分頁 */
+        .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+        .tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); padding: 10px 18px; font-size: 0.95rem; cursor: pointer; font-family: var(--font-main); margin-bottom: -1px; }
+        .tab:hover { color: var(--text-strong); }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: #da3633; color: #fff; font-size: 0.7rem; line-height: 18px; text-align: center; }
+
+        /* 新增交接 */
+        .ho-form { border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-bottom: 22px; background: var(--bg); }
+        .ho-form textarea { width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-strong); border-radius: 4px; font: inherit; font-size: 0.95rem; outline: none; }
+        .ho-form textarea:focus { border-color: var(--accent); }
+        .ho-form .label { color: var(--muted); font-size: 0.8rem; margin: 12px 0 6px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); padding: 5px 12px; border-radius: 16px; cursor: pointer; font-size: 0.85rem; user-select: none; }
+        .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+        .ho-form .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+        .ho-form input[type="date"] { padding: 8px; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-strong); border-radius: 4px; font-family: var(--font-mono); }
+        .ho-form .row .primary-btn { margin-left: auto; }
+        .form-msg { color: #da3633; font-size: 0.82rem; }
+        .filters { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+
         /* 手機上刪除鈕常駐顯示 (沒有滑鼠移過的狀態) */
         @media (max-width: 768px) {
             .icon-btn { opacity: 1; }
@@ -56,7 +77,37 @@
 
     <main>
         <div class="content-card">
-            <h1>[ 我的待辦 ]</h1>
+            <h1>[ 待辦與交接 ]</h1>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="todo" onclick="showTab('todo')">我的待辦</button>
+                <button class="tab" data-tab="handover" onclick="showTab('handover')">工作交接<span class="count" id="ho-count" hidden></span></button>
+            </div>
+
+            <!-- ===== 工作交接 ===== -->
+            <div id="pane-handover" hidden>
+                <div class="ho-form">
+                    <textarea id="ho-text" maxlength="2000" placeholder="交接內容，例如：12/20 龍平團的房控已確認到 A 房，B 房待飯店回覆…"></textarea>
+                    <div class="label">交接給誰看（可複選）</div>
+                    <div class="chips" id="ho-targets"></div>
+                    <div class="row">
+                        <span class="label" style="margin:0;">期限</span>
+                        <input type="date" id="ho-due">
+                        <span class="form-msg" id="ho-msg"></span>
+                        <button class="primary-btn" onclick="submitHandover()">[ 送出交接 ]</button>
+                    </div>
+                </div>
+                <div class="filters" id="ho-filters">
+                    <span class="chip on" data-filter="incoming">交接給我的</span>
+                    <span class="chip" data-filter="outgoing">我發出的</span>
+                    <span class="chip" data-filter="done">已完成</span>
+                </div>
+                <div id="ho-list"></div>
+                <div class="status" id="ho-status"></div>
+            </div>
+
+            <!-- ===== 我的待辦 ===== -->
+            <div id="pane-todo">
             <p class="subtitle">只有你自己看得到這裡的內容。點文字可修改，點日期可改期限。</p>
 
             <div class="add-row">
@@ -76,52 +127,154 @@
             </div>
 
             <div class="status" id="status"></div>
+            </div>
         </div>
     </main>
 
     <script src="config.js"></script>
     <script src="sidebar.js"></script>
+    <script src="handover.js"></script>
+    <script>
+        // ===== 分頁 (網址加 #handover 直接開工作交接) =====
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+            document.getElementById('pane-todo').hidden = tab !== 'todo';
+            document.getElementById('pane-handover').hidden = tab !== 'handover';
+            history.replaceState(null, '', tab === 'handover' ? '#handover' : '#');
+        }
+        if (location.hash === '#handover') showTab('handover');
+
+        // ===== 工作交接 =====
+        const hoView = Handover.mount(document.getElementById('ho-list'), { filter: 'incoming', statusEl: document.getElementById('ho-status'), emptyText: '目前沒有交接給你的事項' });
+        const EMPTY = { incoming: '目前沒有交接給你的事項', outgoing: '你還沒有發出交接', done: '沒有已完成的交接' };
+        document.querySelectorAll('#ho-filters .chip').forEach(chip => chip.onclick = () => {
+            document.querySelectorAll('#ho-filters .chip').forEach(c => c.classList.toggle('on', c === chip));
+            hoView.setFilter(chip.dataset.filter, chip.dataset.filter !== 'done', EMPTY[chip.dataset.filter]);
+        });
+        hoView.setFilter('incoming', true);
+
+        // 交接對象：「所有人」與個別同事互斥
+        const selected = new Set();
+        function renderTargets() {
+            const chips = [{ email: 'ALL', name: '所有人' }].concat(Handover.users());
+            document.getElementById('ho-targets').innerHTML = chips.map(u =>
+                `<span class="chip ${selected.has(u.email) ? 'on' : ''}" data-email="${u.email}">${u.name.replace(/[&<>"]/g, '')}</span>`).join('');
+            document.querySelectorAll('#ho-targets .chip').forEach(c => c.onclick = () => {
+                const email = c.dataset.email;
+                if (selected.has(email)) selected.delete(email);
+                else { if (email === 'ALL') selected.clear(); else selected.delete('ALL'); selected.add(email); }
+                renderTargets();
+            });
+        }
+        // 未讀數 (交接給我的、有新動態)
+        Handover.onChange(items => {
+            renderTargets();
+            const n = items.filter(h => Handover.isIncoming(h) && h.status !== 'done' && Handover.isNew(h)).length;
+            const badge = document.getElementById('ho-count');
+            badge.hidden = !n;
+            badge.textContent = n;
+        });
+        renderTargets();
+        Handover.load();
+
+        function submitHandover() {
+            const msg = document.getElementById('ho-msg');
+            const text = document.getElementById('ho-text').value.trim();
+            if (!text) { msg.textContent = '請輸入交接內容'; return; }
+            if (!selected.size) { msg.textContent = '請選擇交接給誰'; return; }
+            const due = document.getElementById('ho-due').value.replace(/-/g, '/');
+            msg.textContent = '';
+            Handover.create({ text, targets: [...selected], due });
+            document.getElementById('ho-text').value = '';
+            document.getElementById('ho-due').value = '';
+            selected.clear();
+            renderTargets();
+            // 切到「我發出的」看剛送出的交接
+            document.querySelector('#ho-filters [data-filter="outgoing"]').click();
+        }
+    </script>
     <script>
         let items = [];
-        let pending = 0;          // 尚未完成的雲端同步數
         let showDone = false;
         const statusEl = document.getElementById('status');
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const todayStr = () => { const d = new Date(); return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`; };
         const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2);
 
-        // ===== 讀取 =====
-        fetchWithCache(GAS_API.AUTH, { action: 'todoList' }, (res) => {
-            if (res.status !== 'success') { statusEl.textContent = '讀取失敗：' + res.message; return; }
-            if (pending === 0) { items = res.items; render(); }
-        }).then(() => { statusEl.textContent = '已同步'; })
-          .catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
+        // ===== 先存在瀏覽器，再整批同步到雲端 =====
+        // LOCAL_KEY：目前的完整清單 (含尚未同步的變更)，登出時清除
+        // OUTBOX_KEY：尚未送到雲端的變更，關掉頁面也不會遺失，下次開啟自動補送
+        const LOCAL_KEY = 'opCache:todoLocal:' + AUTH.user.email;
+        const OUTBOX_KEY = 'opTodoOutbox:' + AUTH.user.email;
+        const readJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+        const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+        let outbox = readJSON(OUTBOX_KEY) || [];
+        let syncing = false, flushTimer = null, retryTimer = null;
 
-        // ===== 寫入：畫面先更新，背景依序同步到雲端 =====
-        // 一次只送一筆，避免連續操作時多筆請求在 GAS 端互相排隊逾時
-        let queue = Promise.resolve();
-        let hadError = false;
-        function sync(body) {
-            pending++;
-            statusEl.textContent = `儲存中...（剩 ${pending} 筆）`;
-            queue = queue.then(() => fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify(body) })
+        function setStatus(cloud) {
+            statusEl.textContent = '✓ 已儲存 · ' + (cloud || (outbox.length ? '同步中…' : '已同步到雲端'));
+        }
+
+        function applyOp(list, op) {
+            if (op.type === 'delete') return list.filter(t => t.id !== op.id);
+            const i = list.findIndex(t => t.id === op.item.id);
+            if (i >= 0) { list[i] = Object.assign({}, list[i], op.item); return list; }
+            return list.concat([Object.assign({ created: '', doneAt: '' }, op.item)]);
+        }
+
+        function queueOp(op) {
+            outbox.push(op);
+            writeJSON(OUTBOX_KEY, outbox);
+            writeJSON(LOCAL_KEY, items);
+            render();
+            setStatus();
+            clearTimeout(flushTimer);
+            flushTimer = setTimeout(flush, 400);   // 連續操作合併成一次送出
+        }
+
+        function flush() {
+            if (syncing || !outbox.length) return;
+            syncing = true;
+            clearTimeout(retryTimer);
+            retryTimer = null;
+            const batch = outbox.slice();
+            fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify({ action: 'todoBatch', ops: batch }) })
                 .then(r => r.json())
                 .then(res => {
-                    if (res.status !== 'success') { hadError = true; statusEl.textContent = '儲存失敗：' + res.message; return; }
-                    if (pending === 1) { items = res.items; render(); }
+                    if (res.status !== 'success') throw new Error(res.message);
+                    outbox = outbox.slice(batch.length);
+                    writeJSON(OUTBOX_KEY, outbox);
+                    // 以雲端資料為準，再疊上同步期間新增的變更
+                    items = outbox.reduce(applyOp, res.items);
+                    writeJSON(LOCAL_KEY, items);
+                    render();
+                    setStatus();
                 })
-                .catch(err => { hadError = true; statusEl.textContent = '網路錯誤，有變更沒有存到：' + err.message; })
-                .then(() => {
-                    pending--;
-                    if (pending > 0) statusEl.textContent = `儲存中...（剩 ${pending} 筆）`;
-                    else if (!hadError) statusEl.textContent = '已儲存';
-                    hadError = pending > 0 && hadError;
-                }));
-            return queue;
+                .catch(err => {
+                    setStatus('雲端同步失敗，5 秒後自動重試（資料已存在這台電腦）');
+                    retryTimer = setTimeout(flush, 5000);
+                })
+                .then(() => { syncing = false; if (outbox.length && !retryTimer) flush(); });   // 同步期間又有新變更就接著送
         }
-        window.addEventListener('beforeunload', e => { if (pending > 0) { e.preventDefault(); e.returnValue = ''; } });
 
-        function saveItem(item) { render(); sync({ action: 'todoSave', item }); }
+        // ===== 讀取：先顯示這台電腦上的清單，再跟雲端對齊 =====
+        items = readJSON(LOCAL_KEY) || [];
+        render();
+        setStatus(outbox.length ? '有尚未同步的變更，同步中…' : '讀取雲端資料…');
+        fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify({ action: 'todoList' }) })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status !== 'success') { setStatus('雲端讀取失敗：' + res.message); return; }
+                if (!syncing) {
+                    items = outbox.reduce(applyOp, res.items);
+                    writeJSON(LOCAL_KEY, items);
+                    render();
+                }
+                if (outbox.length) flush(); else setStatus();
+            })
+            .catch(err => setStatus('網路錯誤，暫時只顯示這台電腦上的資料：' + err.message));
+
+        function saveItem(item) { queueOp({ type: 'save', item: { id: item.id, text: item.text, due: item.due, done: !!item.done } }); }
 
         function addTodo() {
             const input = document.getElementById('new-text');
@@ -145,15 +298,15 @@
 
         function deleteItem(id) {
             items = items.filter(t => t.id !== id);
-            render();
-            sync({ action: 'todoDelete', id });
+            queueOp({ type: 'delete', id });
         }
 
         function clearDone() {
-            if (!items.some(t => t.done)) return;
+            const doneIds = items.filter(t => t.done).map(t => t.id);
+            if (!doneIds.length) return;
             items = items.filter(t => !t.done);
-            render();
-            sync({ action: 'todoClearDone' });
+            doneIds.forEach(id => outbox.push({ type: 'delete', id }));
+            queueOp(outbox.pop());
         }
 
         function toggleDone() { showDone = !showDone; render(); }
