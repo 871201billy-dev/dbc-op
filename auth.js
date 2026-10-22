@@ -149,6 +149,31 @@
             .catch(() => {});
     });
 
+    // ===== 系統更新提醒 =====
+    // 每次上傳新版時更新 version.json；開著的頁面每 5 分鐘檢查一次，有新版就顯示提示 (不自動重新整理，避免打到一半的內容不見)
+    let loadedVersion = null;
+    function checkVersion() {
+        if (document.hidden) return;
+        fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+            .then(r => r.json())
+            .then(v => {
+                if (loadedVersion === null) { loadedVersion = v.version; return; }
+                if (v.version !== loadedVersion && !document.getElementById('update-banner')) showUpdateBanner();
+            })
+            .catch(() => {});
+    }
+    function showUpdateBanner() {
+        const bar = document.createElement('div');
+        bar.id = 'update-banner';
+        bar.textContent = '🔄 系統已更新，點這裡重新整理以使用新版';
+        bar.style.cssText = 'position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:2000; background:var(--accent); color:var(--accent-contrast); padding:12px 22px; border-radius:24px; font-weight:bold; font-size:0.9rem; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.35);';
+        bar.onclick = () => location.reload();
+        document.body.appendChild(bar);
+    }
+    document.addEventListener('DOMContentLoaded', checkVersion);
+    setInterval(checkVersion, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
+
     // 通行證到期時自動登出
     setTimeout(() => AUTH.logout('expired'), Math.max(0, auth.exp - Date.now()));
 })();

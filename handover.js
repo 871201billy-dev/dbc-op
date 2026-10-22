@@ -53,6 +53,33 @@
         }).catch(err => setStatus('網路錯誤：' + err.message));
     }
 
+    // ===== 自動更新：頁面開著時每分鐘檢查一次，切回分頁時立即檢查 =====
+    // 有編輯中、尚未同步的變更時先跳過，避免蓋掉
+    const REFRESH_MS = 60000;
+    let refreshing = false;
+    const typingReply = () => { const a = document.activeElement; return !!(a && a.closest && a.closest('.ho-reply-box') && a.value); };
+    function refresh() {
+        if (refreshing || pending > 0 || editing || document.hidden || typingReply()) return;
+        refreshing = true;
+        fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify({ action: 'handoverList' }) })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status !== 'success' || pending > 0 || editing) return;
+                if (JSON.stringify(res.items) !== JSON.stringify(items)) { items = res.items; renderAll(); }
+            })
+            .catch(() => {})
+            .then(() => { refreshing = false; });
+    }
+    setInterval(refresh, REFRESH_MS);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+
+    // 分頁標題顯示新動態數，例如「(2) ＤＢＣ ｏｐ工具 - 首頁」
+    const baseTitle = document.title;
+    function updateTitle() {
+        const n = items.filter(h => isIncoming(h) && h.status !== 'done' && isNew(h)).length;
+        document.title = (n ? `(${n}) ` : '') + baseTitle;
+    }
+
     // ===== 寫入：一次送一筆，回應後用伺服器的最新資料重畫 =====
     function sync(body) {
         pending++;
@@ -232,6 +259,7 @@
     function renderAll() {
         views.forEach(renderView);
         listeners.forEach(fn => fn(items));
+        updateTitle();
     }
 
     function sendReply(id) {
@@ -289,7 +317,7 @@
     document.head.appendChild(style);
 
     window.Handover = {
-        load, create, toggle, sendReply, remove,
+        load, refresh, create, toggle, sendReply, remove,
         startEdit, cancelEdit, saveEdit, toggleEditTarget,
         setStatus: setStatusOf,
         users: () => users.filter(u => u.email !== me),

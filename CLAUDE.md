@@ -5,6 +5,8 @@
 
 - 網站：https://871201billy-dev.github.io/dbc-op/ （GitHub Pages，repo `871201billy-dev/dbc-op`，公開）
 - 推送到 `main` 約 1 分鐘後網站自動更新
+- **每次推送前更新 `version.json` 的 version (例如當下時間)**：開著的頁面每 5 分鐘檢查一次，版本不同就提示使用者重新整理
+- 首頁與待辦頁的交接每分鐘自動檢查新資料 (handover.js refresh)，分頁標題顯示新動態數
 
 ## 架構
 
