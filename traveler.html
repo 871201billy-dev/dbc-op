@@ -125,57 +125,70 @@
     <script>
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const statusEl = document.getElementById('status');
-        let meta = null;          // { dates, settings, checks, canCheck, canUpload }
-        let rows = [];
+        let meta = null;          // { settings, checks, canCheck, canUpload }
+        let allRows = [];         // 所有出發日的旅客 (一次載入，切換日期 / 地區在本機篩選)
+        let rows = [];            // 目前顯示的出發日 + 地區
+        let dates = {};           // 出發日 → { 地區: 人數 }
         let current = { date: '', region: '' };
 
         function api(body) { return fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify(body) }).then(r => r.json()); }
 
-        // ===== 讀取 =====
-        function loadMeta(keepSelection) {
-            return api({ action: 'travelerMeta' }).then(res => {
+        // ===== 讀取：權限與分類設定 + 全部旅客 (先顯示上次存在這台電腦的資料，背景再更新) =====
+        function loadMeta(skipCache) {
+            return fetchWithCache(GAS_API.AUTH, { action: 'travelerMeta' }, res => {
                 if (res.status !== 'success') { document.getElementById('tbody').innerHTML = `<tr><td class="empty">${esc(res.message)}</td></tr>`; return; }
                 meta = res;
                 document.getElementById('upload-bar').hidden = !meta.canUpload;
-                const dates = Object.keys(meta.dates).sort();
-                const sel = document.getElementById('date-select');
-                if (!dates.length) {
-                    sel.innerHTML = '<option>尚無資料</option>';
-                    document.getElementById('tbody').innerHTML = `<tr><td class="empty">還沒有旅客資料${meta.canUpload ? '，請先上傳 ERP 旅客報表' : '，請等有上傳權限的同事上傳 ERP 報表'}。</td></tr>`;
-                    return;
-                }
-                sel.innerHTML = dates.map(d => {
-                    const total = Object.values(meta.dates[d]).reduce((a, b) => a + b, 0);
-                    return `<option value="${d}">${d}（${'日一二三四五六'[new Date(d).getDay()]}）${total} 人</option>`;
-                }).join('');
-                // 預設：今天之後最近的出發日
-                const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
-                const pick = keepSelection && meta.dates[current.date] ? current.date : (dates.find(d => d >= today) || dates[dates.length - 1]);
-                sel.value = pick;
-                selectDate(pick, keepSelection);
-            }).catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
+                render();
+            }, { skipCache }).catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
+        }
+
+        function loadAll(skipCache) {
+            statusEl.textContent = '讀取旅客資料…';
+            return fetchWithCache(GAS_API.AUTH, { action: 'travelerList', date: 'ALL', region: '' }, (res, info) => {
+                if (res.status !== 'success') { statusEl.textContent = '讀取失敗：' + res.message; return; }
+                if (pending.length) return;   // 有尚未同步的勾選，先不覆蓋
+                allRows = res.rows;
+                buildDates();
+                statusEl.textContent = info.fromCache ? '先顯示上次的資料，正在更新…' : '✓ 已是最新資料';
+            }, { skipCache }).then(r => { if (r && !r.updated) statusEl.textContent = '✓ 已是最新資料'; })
+              .catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
+        }
+
+        // 出發日清單 (只算在最新報表中的旅客)
+        function buildDates() {
+            dates = {};
+            allRows.forEach(r => { if (!r.latest) return; (dates[r.dep] = dates[r.dep] || {}); dates[r.dep][r.region] = (dates[r.dep][r.region] || 0) + 1; });
+            const list = Object.keys(dates).sort();
+            const sel = document.getElementById('date-select');
+            if (!list.length) {
+                sel.innerHTML = '<option>尚無資料</option>';
+                rows = [];
+                document.getElementById('tbody').innerHTML = `<tr><td class="empty">還沒有旅客資料${meta && meta.canUpload ? '，請先上傳 ERP 旅客報表' : '，請等有上傳權限的同事上傳 ERP 報表'}。</td></tr>`;
+                return;
+            }
+            sel.innerHTML = list.map(d => {
+                const total = Object.values(dates[d]).reduce((a, b) => a + b, 0);
+                return `<option value="${d}">${d}（${'日一二三四五六'[new Date(d).getDay()]}）${total} 人</option>`;
+            }).join('');
+            // 保留目前選的日期；第一次開啟時選今天之後最近的出發日
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
+            const pick = dates[current.date] ? current.date : (list.find(d => d >= today) || list[list.length - 1]);
+            sel.value = pick;
+            selectDate(pick, true);
         }
 
         function selectDate(date, keepRegion) {
             current.date = date;
-            const regions = meta.dates[date] || {};
+            const regions = dates[date] || {};
             if (!keepRegion || !regions[current.region]) current.region = Object.keys(regions).sort((a, b) => regions[b] - regions[a])[0] || '';
             document.getElementById('region-chips').innerHTML = Object.keys(regions).map(r =>
                 `<span class="chip ${r === current.region ? 'on' : ''}" onclick="selectRegion('${esc(r)}')">${esc(r)}<small>${regions[r]}</small></span>`).join('');
-            loadList();
+            rows = allRows.filter(r => r.dep === date && r.region === current.region);
+            render();
         }
 
         function selectRegion(region) { current.region = region; selectDate(current.date, true); }
-
-        function loadList() {
-            document.getElementById('tbody').innerHTML = '<tr><td class="empty">讀取中...</td></tr>';
-            const { date, region } = current;
-            fetchWithCache(GAS_API.AUTH, { action: 'travelerList', date, region }, res => {
-                if (date !== current.date || region !== current.region) return;
-                if (res.status !== 'success') { statusEl.textContent = '讀取失敗：' + res.message; return; }
-                if (pending.length === 0) { rows = res.rows; render(); }
-            }).catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
-        }
 
         // ===== 畫面 =====
         const isActive = r => r.latest && r.status !== '取消';
@@ -212,7 +225,7 @@
                 shown.add(r.order);
                 const tags = [];
                 if (r.status === '取消') tags.push('<span class="tag">取消</span>');
-                if (!r.latest) tags.push('<span class="tag" title="這位旅客不在最近一次上傳的 ERP 報表中">不在最新報表</span>');
+                if (!r.latest) tags.push('<span class="tag" title="最近一次上傳的 ERP 報表 (同一段出發日) 中沒有這位旅客，多半是已取消">已不在報表 (可能取消)</span>');
                 const data = (r.missing.length ? r.missing.map(m => `<span class="tag miss">缺${esc(m)}</span>`).join('') : '<span class="tag ok">✓ 完整</span>')
                     + (r.passport ? `<span class="tag warn">護照${esc(r.passport)}</span>` : '');
                 const checks = meta.checks.map(c => {
@@ -310,7 +323,7 @@
                     if (parsed.missingColumns && parsed.missingColumns.length) text += `\n（報表中找不到這些欄位，所以沒有檢查：${parsed.missingColumns.join('、')}）`;
                     if (res.unmatched && res.unmatched.length) text += `\n（對不到的多半是 ERP 報表匯出後才新增、或已取消的訂單）`;
                     msg.textContent = text;
-                    loadMeta(true);
+                    loadAll(true);
                 })
                 .catch(err => { msg.className = 'upload-msg err'; msg.textContent = '✗ ' + err.message; });
         }
@@ -335,11 +348,12 @@
             api({ action: 'travelerSaveSettings', rows: list }).then(res => {
                 msg.className = 'upload-msg ' + (res.status === 'success' ? 'ok' : 'err');
                 msg.textContent = res.message;
-                if (res.status === 'success') loadMeta(true);
+                if (res.status === 'success') { loadMeta(true); loadAll(true); }
             });
         }
 
         loadMeta();
+        loadAll();
     </script>
 </body>
 </html>
