@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ＤＢＣ ｏｐ工具 - 帳號管理</title>
+    <link rel="stylesheet" href="common.css">
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <style>
+        main { flex: 1; padding: 40px; overflow-y: auto; }
+        .content-card { background: var(--surface); padding: 40px; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 20px 40px var(--shadow); margin-bottom: 30px; }
+        h1 { margin-top: 0; color: var(--text-strong); font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 20px; }
+        h2 { color: var(--accent); font-family: var(--font-mono); font-size: 1rem; letter-spacing: 2px; margin: 0 0 16px; }
+        .terminal-box { background: var(--input-bg); border: 1px solid var(--border); padding: 16px 20px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 30px; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        th, td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; vertical-align: middle; }
+        th { background: var(--surface-2); color: var(--accent); font-family: var(--font-mono); font-weight: normal; white-space: nowrap; }
+        tr:hover td { background: var(--surface-3); }
+        td small { color: var(--muted); }
+        .tag { white-space: nowrap; display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 10px; font-size: 0.75rem; background: var(--surface-3); color: var(--text); }
+        .tag.plus { background: rgba(63,185,80,0.15); color: #3fb950; }
+        .tag.minus { background: rgba(218,54,51,0.15); color: #da3633; text-decoration: line-through; }
+        .off { color: var(--muted-2); }
+        .primary-btn, .ghost-btn, .del-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 7px 16px; border-radius: 2px; font-family: var(--font-mono); font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .primary-btn:hover { background: var(--accent); color: var(--accent-contrast); }
+        .ghost-btn { border-color: var(--border-strong); color: var(--muted); }
+        .ghost-btn:hover { color: var(--text-strong); border-color: var(--muted); }
+        .del-btn { border-color: #da3633; color: #da3633; }
+        .del-btn:hover { background: #da3633; color: #fff; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; flex-wrap: wrap; }
+
+        .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+        .modal { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 28px; }
+        .modal h3 { margin: 0 0 20px; color: var(--text-strong); font-weight: 400; }
+        .field { margin-bottom: 16px; }
+        .field label { display: block; color: var(--muted); font-size: 0.8rem; margin-bottom: 6px; font-family: var(--font-mono); }
+        .field input[type="text"], .field input[type="email"], .field select { width: 100%; padding: 9px; background: var(--input-bg); border: 1px solid var(--border); color: var(--text-strong); border-radius: 2px; box-sizing: border-box; font-size: 0.9rem; }
+        .perm-grid { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 14px; align-items: center; background: var(--input-bg); border: 1px solid var(--border); padding: 12px; border-radius: 2px; font-size: 0.85rem; }
+        .perm-grid .head { color: var(--muted); font-size: 0.75rem; }
+        .perm-grid .from-role { color: var(--muted); font-size: 0.75rem; }
+        .checks { display: flex; flex-wrap: wrap; gap: 10px 18px; background: var(--input-bg); border: 1px solid var(--border); padding: 12px; border-radius: 2px; }
+        .checks label { display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 0.85rem; cursor: pointer; }
+        input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+        .modal .actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 24px; }
+        .modal .actions div { display: flex; gap: 10px; }
+        .hint { color: var(--muted); font-size: 0.78rem; line-height: 1.6; margin-top: 6px; }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <main>
+        <div class="content-card">
+            <h1>[ 帳號管理 ]</h1>
+            <div class="terminal-box" id="sys-log">> 正在讀取帳號資料...</div>
+
+            <div class="toolbar">
+                <h2>// 使用者</h2>
+                <button class="primary-btn" onclick="editUser()">[ + 新增使用者 ]</button>
+            </div>
+            <div class="table-wrap"><table>
+                <thead><tr><th>Email</th><th>姓名</th><th>角色</th><th>可用功能</th><th>狀態</th><th>最後登入</th><th></th></tr></thead>
+                <tbody id="user-body"></tbody>
+            </table></div>
+        </div>
+
+        <div class="content-card">
+            <div class="toolbar">
+                <h2>// 角色</h2>
+                <button class="primary-btn" onclick="editRole()">[ + 新增角色 ]</button>
+            </div>
+            <div class="table-wrap"><table>
+                <thead><tr><th>角色</th><th>權限</th><th>說明</th><th>人數</th><th></th></tr></thead>
+                <tbody id="role-body"></tbody>
+            </table></div>
+            <p class="hint">權限變更會在對方下次登入時生效（通行證最長 10 小時會自動過期）。若要立即生效，請對方登出再登入。</p>
+        </div>
+    </main>
+
+    <div id="modal-root"></div>
+
+    <script src="config.js"></script>
+    <script src="sidebar.js"></script>
+    <script>
+        let data = { users: [], roles: [], features: {} };
+        const log = document.getElementById('sys-log');
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+        function api(body) {
+            return fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify(body) }).then(r => r.json());
+        }
+
+        function load() {
+            api({ action: 'getAdminData' }).then(res => {
+                if (res.status !== 'success') { log.innerHTML = `> <span style="color:#da3633">${esc(res.message)}</span>`; return; }
+                data = res;
+                log.innerHTML = `> 共 ${res.users.length} 位使用者、${res.roles.length} 種角色。`;
+                render();
+            }).catch(err => { log.innerHTML = `> <span style="color:#da3633">網路錯誤：${esc(err.message)}</span>`; });
+        }
+
+        function permsOf(u) {
+            const role = data.roles.find(r => r.name === u.role);
+            const set = new Set(role ? role.perms : []);
+            u.extraAllow.forEach(p => set.add(p));
+            u.extraDeny.forEach(p => set.delete(p));
+            return set;
+        }
+
+        function render() {
+            const F = data.features;
+            document.getElementById('user-body').innerHTML = data.users.map((u, i) => {
+                const role = data.roles.find(r => r.name === u.role);
+                const tags = Object.keys(F).filter(k => permsOf(u).has(k)).map(k => {
+                    const plus = u.extraAllow.includes(k) && !(role && role.perms.includes(k));
+                    return `<span class="tag ${plus ? 'plus' : ''}">${plus ? '+' : ''}${esc(F[k])}</span>`;
+                }).concat(u.extraDeny.filter(k => role && role.perms.includes(k)).map(k => `<span class="tag minus">${esc(F[k])}</span>`)).join('');
+                return `<tr class="${u.active ? '' : 'off'}">
+                    <td>${esc(u.email)}${u.email === AUTH.user.email ? ' <small>(你)</small>' : ''}</td>
+                    <td>${esc(u.name)}</td><td>${esc(u.role)}</td><td>${tags || '<small>無</small>'}</td>
+                    <td>${u.active ? '啟用' : '<span style="color:#da3633">停用</span>'}</td>
+                    <td><small>${esc(u.lastLogin) || '尚未登入'}</small></td>
+                    <td><button class="ghost-btn" onclick="editUser(${i})">編輯</button></td></tr>`;
+            }).join('') || '<tr><td colspan="7"><small>尚無使用者</small></td></tr>';
+
+            document.getElementById('role-body').innerHTML = data.roles.map((r, i) => `<tr>
+                <td>${esc(r.name)}</td>
+                <td>${r.perms.map(k => `<span class="tag">${esc(F[k])}</span>`).join('') || '<small>無</small>'}</td>
+                <td><small>${esc(r.note)}</small></td>
+                <td>${data.users.filter(u => u.role === r.name).length}</td>
+                <td><button class="ghost-btn" onclick="editRole(${i})">編輯</button></td></tr>`).join('');
+        }
+
+        function openModal(html) {
+            document.getElementById('modal-root').innerHTML = `<div class="modal-bg"><div class="modal">${html}</div></div>`;
+        }
+        function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+        // ===== 使用者 =====
+        function editUser(index) {
+            const isNew = index === undefined;
+            const u = isNew ? { email: '', name: '', role: (data.roles[0] || {}).name || '', extraAllow: [], extraDeny: [], active: true } : data.users[index];
+            const F = data.features;
+            openModal(`
+                <h3>${isNew ? '新增使用者' : '編輯使用者'}</h3>
+                <div class="field"><label>Google 帳號 Email</label><input type="email" id="u-email" value="${esc(u.email)}" placeholder="example@gmail.com"></div>
+                <div class="field"><label>姓名</label><input type="text" id="u-name" value="${esc(u.name)}"></div>
+                <div class="field"><label>角色</label><select id="u-role">${data.roles.map(r => `<option ${r.name === u.role ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
+                <div class="field"><label>個人調整（在角色權限之外額外開放或關閉）</label><div class="perm-grid" id="u-perms"></div></div>
+                <div class="field"><label><input type="checkbox" id="u-active" ${u.active ? 'checked' : ''}> 啟用這個帳號</label></div>
+                <div class="actions">
+                    <div>${isNew ? '' : '<button class="del-btn" id="u-del">刪除</button>'}</div>
+                    <div><button class="ghost-btn" onclick="closeModal()">取消</button><button class="primary-btn" id="u-save">儲存</button></div>
+                </div>`);
+
+            const allow = new Set(u.extraAllow), deny = new Set(u.extraDeny);
+            function drawPerms() {
+                const role = data.roles.find(r => r.name === document.getElementById('u-role').value);
+                const rp = role ? role.perms : [];
+                document.getElementById('u-perms').innerHTML = '<span class="head">功能</span><span class="head">角色預設</span><span class="head">此人</span>' +
+                    Object.keys(F).map(k => {
+                        const inRole = rp.includes(k);
+                        const on = inRole ? !deny.has(k) : allow.has(k);
+                        return `<span>${esc(F[k])}</span><span class="from-role">${inRole ? '✔' : '—'}</span><input type="checkbox" data-perm="${k}" ${on ? 'checked' : ''}>`;
+                    }).join('');
+                document.querySelectorAll('#u-perms [data-perm]').forEach(cb => cb.onchange = () => {
+                    const k = cb.dataset.perm, inRole = rp.includes(k);
+                    allow.delete(k); deny.delete(k);
+                    if (cb.checked && !inRole) allow.add(k);
+                    if (!cb.checked && inRole) deny.add(k);
+                });
+            }
+            document.getElementById('u-role').onchange = () => { allow.clear(); deny.clear(); drawPerms(); };
+            drawPerms();
+
+            document.getElementById('u-save').onclick = () => {
+                const user = {
+                    originalEmail: isNew ? '' : u.email,
+                    email: document.getElementById('u-email').value.trim(),
+                    name: document.getElementById('u-name').value.trim(),
+                    role: document.getElementById('u-role').value,
+                    extraAllow: [...allow], extraDeny: [...deny],
+                    active: document.getElementById('u-active').checked
+                };
+                save({ action: 'saveUser', user });
+            };
+            if (!isNew) document.getElementById('u-del').onclick = () => {
+                if (document.getElementById('u-del').dataset.confirm) save({ action: 'deleteUser', email: u.email });
+                else { document.getElementById('u-del').dataset.confirm = 1; document.getElementById('u-del').textContent = '確定刪除？'; }
+            };
+        }
+
+        // ===== 角色 =====
+        function editRole(index) {
+            const isNew = index === undefined;
+            const r = isNew ? { name: '', perms: [], note: '' } : data.roles[index];
+            const F = data.features;
+            openModal(`
+                <h3>${isNew ? '新增角色' : '編輯角色'}</h3>
+                <div class="field"><label>角色名稱</label><input type="text" id="r-name" value="${esc(r.name)}"></div>
+                <div class="field"><label>可用功能</label><div class="checks">${Object.keys(F).map(k => `<label><input type="checkbox" data-perm="${k}" ${r.perms.includes(k) ? 'checked' : ''}>${esc(F[k])}</label>`).join('')}</div></div>
+                <div class="field"><label>說明</label><input type="text" id="r-note" value="${esc(r.note)}"></div>
+                <div class="actions">
+                    <div>${isNew ? '' : '<button class="del-btn" id="r-del">刪除</button>'}</div>
+                    <div><button class="ghost-btn" onclick="closeModal()">取消</button><button class="primary-btn" id="r-save">儲存</button></div>
+                </div>`);
+            document.getElementById('r-save').onclick = () => save({ action: 'saveRole', role: {
+                originalName: isNew ? '' : r.name,
+                name: document.getElementById('r-name').value.trim(),
+                perms: [...document.querySelectorAll('.checks [data-perm]:checked')].map(cb => cb.dataset.perm),
+                note: document.getElementById('r-note').value.trim()
+            } });
+            if (!isNew) document.getElementById('r-del').onclick = () => {
+                if (document.getElementById('r-del').dataset.confirm) save({ action: 'deleteRole', name: r.name });
+                else { document.getElementById('r-del').dataset.confirm = 1; document.getElementById('r-del').textContent = '確定刪除？'; }
+            };
+        }
+
+        function save(body) {
+            const btn = document.querySelector('.modal .primary-btn');
+            if (btn) { btn.disabled = true; btn.textContent = '儲存中...'; }
+            api(body).then(res => {
+                if (res.status !== 'success') {
+                    if (btn) { btn.disabled = false; btn.textContent = '儲存'; }
+                    alertInModal(res.message);
+                    return;
+                }
+                closeModal();
+                log.innerHTML = '> <span style="color:#3fb950">已儲存。</span>';
+                load();
+            }).catch(err => alertInModal('網路錯誤：' + err.message));
+        }
+
+        function alertInModal(text) {
+            const m = document.querySelector('.modal');
+            let el = m && m.querySelector('.modal-error');
+            if (m && !el) { el = document.createElement('p'); el.className = 'modal-error'; el.style.color = '#da3633'; m.appendChild(el); }
+            if (el) el.textContent = text;
+        }
+
+        load();
+    </script>
+</body>
+</html>

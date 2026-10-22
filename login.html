@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ＤＢＣ ｏｐ工具 - 登入</title>
+    <link rel="stylesheet" href="common.css">
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <script src="config.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer onload="initGoogle()"></script>
+    <style>
+        body { align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+        .login-card { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 20px 40px var(--shadow); padding: 40px 32px; text-align: center; }
+        .login-card h1 { margin: 0 0 6px; color: var(--accent); font-size: 1.2rem; letter-spacing: 3px; font-weight: 600; }
+        .login-card p { color: var(--muted); font-size: 0.85rem; margin: 0 0 28px; line-height: 1.6; }
+        #google-btn { display: flex; justify-content: center; min-height: 44px; }
+        .msg { margin-top: 20px; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.6; min-height: 1.6em; }
+        .msg.error { color: #da3633; }
+        .msg.info { color: var(--muted); }
+        .theme-link { margin-top: 24px; background: none; border: none; color: var(--muted-2); cursor: pointer; font-size: 0.8rem; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>DBC OP SYSTEM</h1>
+        <p>請使用已開通權限的 Google 帳號登入</p>
+        <div id="google-btn"></div>
+        <div class="msg info" id="msg"></div>
+        <button class="theme-link" onclick="openThemePanel()">介面設定</button>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const msg = document.getElementById('msg');
+        const REASONS = { expired: '登入已過期，請重新登入。', denied: '這個帳號沒有任何功能權限，請聯絡管理員。' };
+
+        function show(text, type) { msg.textContent = text; msg.className = 'msg ' + (type || 'info'); }
+        if (REASONS[params.get('reason')]) show(REASONS[params.get('reason')], 'error');
+
+        // 已登入就直接進系統
+        if (window.AUTH && AUTH.token && !params.get('reason')) goNext();
+
+        function goNext() {
+            const next = params.get('next');
+            const safeNext = next && AUTH.pagePerms[next.split('?')[0]];
+            location.replace(safeNext ? next : (AUTH.firstAllowedPage() || 'index.html'));
+        }
+
+        function initGoogle() {
+            if (!GOOGLE_CLIENT_ID) { show('系統尚未設定 Google 登入 (缺少用戶端 ID)。', 'error'); return; }
+            google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onGoogleLogin, ux_mode: 'popup' });
+            const dark = getComputedStyle(document.documentElement).colorScheme === 'dark';
+            google.accounts.id.renderButton(document.getElementById('google-btn'), { theme: dark ? 'filled_black' : 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'zh-TW', width: 280 });
+        }
+
+        function onGoogleLogin(response) {
+            show('> 正在驗證帳號權限...');
+            fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify({ action: 'login', idToken: response.credential }) })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status !== 'success') { show(res.message || '登入失敗', 'error'); return; }
+                AUTH.save({ token: res.token, exp: res.exp, user: res.user });
+                show(`> 歡迎，${res.user.name}`);
+                // 依權限前往第一個可用的頁面
+                const pages = AUTH.pagePerms;
+                const first = Object.keys(pages).find(p => res.user.perms.indexOf(pages[p]) >= 0);
+                const next = params.get('next');
+                const nextOk = next && pages[next.split('?')[0]] && res.user.perms.indexOf(pages[next.split('?')[0]]) >= 0;
+                location.replace(nextOk ? next : first);
+            })
+            .catch(err => show('網路錯誤：' + err.message, 'error'));
+        }
+    </script>
+</body>
+</html>

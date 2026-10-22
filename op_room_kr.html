@@ -7,8 +7,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="common.css">
     <script src="theme.js"></script>
+    <script src="auth.js"></script>
     <style>
         html { height: 100%; }
+
+        /* 手機版：房控表欄位多，保持表格排版並讓外層左右滑動 */
+        @media (max-width: 768px) {
+            .main-header { padding: 12px !important; }
+            .main-content { padding: 0 12px 12px !important; }
+            #inventory-view, #ski-view, #city-view { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            #ski-table, #city-table, #inventory-table { display: table !important; overflow: visible; }
+            #ski-table, #city-table { min-width: 900px; }
+            .view-btn { padding: 10px 4px; font-size: 0.78rem; }
+        }
 
         main { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: auto; }
         .main-header { padding: 25px; flex-shrink: 0; }
