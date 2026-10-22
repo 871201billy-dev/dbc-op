@@ -73,7 +73,17 @@
         save(settings);
         apply(settings);
         render();
+        // 登入後也存到帳號，換電腦登入一樣是這個主題
+        if (window.AUTH && AUTH.savePrefs) AUTH.savePrefs({ theme: settings });
     }
+
+    // 套用帳號裡存的主題 (由 auth.js 登入同步時呼叫)
+    window.applyThemeSettings = function (s) {
+        settings = Object.assign({}, DEFAULTS, s);
+        save(settings);
+        apply(settings);
+        render();
+    };
 
     function render() {
         const box = document.getElementById('theme-panel');

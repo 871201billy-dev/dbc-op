@@ -102,6 +102,53 @@
             });
     };
 
+    // ===== 個人設定跟著帳號走 (主題、交接已讀紀錄)，存在登入驗證中心 =====
+    const SEEN_KEY = 'opHandoverSeen:' + auth.user.email;
+    let prefsPatch = {}, prefsTimer = null;
+    function flushPrefs() {
+        clearTimeout(prefsTimer);
+        if (!Object.keys(prefsPatch).length) return;
+        const body = { action: 'prefsSave', prefs: prefsPatch };
+        prefsPatch = {};
+        window.fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify(body), keepalive: true }).catch(() => {});
+    }
+    // 變更先合併，0.8 秒內沒有新變更才送出；離開頁面時立即送出
+    AUTH.savePrefs = patch => {
+        if (patch.theme !== undefined) prefsPatch.theme = patch.theme;
+        if (patch.seen) prefsPatch.seen = Object.assign(prefsPatch.seen || {}, patch.seen);
+        clearTimeout(prefsTimer);
+        prefsTimer = setTimeout(flushPrefs, 800);
+    };
+    window.addEventListener('pagehide', flushPrefs);
+
+    // 套用雲端的設定：主題直接換；已讀紀錄與這台電腦的合併 (同一則取較新的)
+    AUTH.applyPrefs = prefs => {
+        if (prefs.theme && window.applyThemeSettings) window.applyThemeSettings(prefs.theme);
+        if (prefs.seen) {
+            let local = {};
+            try { local = JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; } catch (e) {}
+            Object.keys(prefs.seen).forEach(id => { if (!local[id] || local[id] < prefs.seen[id]) local[id] = prefs.seen[id]; });
+            try { localStorage.setItem(SEEN_KEY, JSON.stringify(local)); } catch (e) {}
+        }
+        document.dispatchEvent(new CustomEvent('op-prefs'));
+    };
+
+    // 每個瀏覽器分頁開啟時向雲端同步一次 (換電腦時就會套用你的設定)
+    document.addEventListener('DOMContentLoaded', () => {
+        const key = 'opPrefsSynced:' + auth.user.email;
+        try { if (sessionStorage.getItem(key)) return; } catch (e) {}
+        window.fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify({ action: 'prefsGet' }) })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status !== 'success') return;
+                AUTH.applyPrefs(res.prefs);
+                // 雲端還沒有主題設定，就把這台電腦目前的主題存上去
+                if (!res.prefs.theme) { try { const t = JSON.parse(localStorage.getItem('opTheme')); if (t) AUTH.savePrefs({ theme: t }); } catch (e) {} }
+                try { sessionStorage.setItem(key, '1'); } catch (e) {}
+            })
+            .catch(() => {});
+    });
+
     // 通行證到期時自動登出
     setTimeout(() => AUTH.logout('expired'), Math.max(0, auth.exp - Date.now()));
 })();

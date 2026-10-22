@@ -21,13 +21,17 @@
     const expanded = new Set();
     const listeners = [];
 
-    // ===== 已讀紀錄 (存在自己的瀏覽器)：別人更新過、我還沒展開看過的，標示「新」 =====
+    // ===== 已讀紀錄：別人更新過、我還沒展開看過的，標示「新」 =====
+    // 存在這台電腦，同時存到帳號 (auth.js savePrefs)，換電腦登入也記得看過哪些
     function loadSeen() { try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; } catch (e) { return {}; } }
     function markSeen(h) {
         const seen = loadSeen();
         seen[h.id] = h.updated || now();
         try { localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch (e) {}
+        if (AUTH.savePrefs) AUTH.savePrefs({ seen: { [h.id]: seen[h.id] } });
     }
+    // 雲端的已讀紀錄同步下來後重畫
+    document.addEventListener('op-prefs', () => renderAll());
     function lastActor(h) { return h.replies.length ? h.replies[h.replies.length - 1].email : h.from; }
     function isNew(h) {
         if (lastActor(h) === me) return false;
@@ -91,6 +95,58 @@
         sync({ action: 'handoverStatus', id, status });
     }
 
+    // ===== 編輯 (只有建立者)：內容、交接對象、期限 =====
+    let editing = null;   // { id, targets: Set }
+    function startEdit(id) {
+        const h = items.find(x => x.id === id);
+        editing = { id, targets: new Set(h.targets) };
+        expanded.add(id);
+        renderAll();
+        const box = document.querySelector(`[data-ho="${id}"] .ho-edit textarea`);
+        if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+    }
+    function cancelEdit() { editing = null; renderAll(); }
+    function toggleEditTarget(email) {
+        const t = editing.targets;
+        if (t.has(email)) t.delete(email);
+        else { if (email === 'ALL') t.clear(); else t.delete('ALL'); t.add(email); }
+        // 只重畫對象選項，保留正在編輯的文字
+        document.querySelectorAll(`[data-ho="${editing.id}"] .ho-edit .ho-chip`).forEach(c => c.classList.toggle('on', t.has(c.dataset.email)));
+    }
+    function saveEdit(id) {
+        const card = document.querySelector(`[data-ho="${id}"] .ho-edit`);
+        const text = card.querySelector('textarea').value.trim();
+        const due = card.querySelector('input[type="date"]').value.replace(/-/g, '/');
+        const msg = card.querySelector('.ho-edit-msg');
+        if (!text) { msg.textContent = '請輸入交接內容'; return; }
+        if (!editing.targets.size) { msg.textContent = '請選擇交接給誰'; return; }
+        const h = items.find(x => x.id === id);
+        Object.assign(h, { text, due, targets: [...editing.targets], updated: now() });
+        editing = null;
+        renderAll();
+        sync({ action: 'handoverSave', item: { id, text, targets: h.targets, due } });
+    }
+    function editHtml(h) {
+        const chips = [{ email: 'ALL', name: '所有人' }].concat(users.filter(u => u.email !== me));
+        const draft = editing.draft || { text: h.text, due: h.due ? h.due.replace(/\//g, '-') : '' };
+        return `<div class="ho-edit">
+            <textarea rows="3" maxlength="2000">${esc(draft.text)}</textarea>
+            <div class="ho-edit-row">
+                <span class="ho-edit-label">交接給</span>
+                ${chips.map(u => `<span class="ho-chip ${editing.targets.has(u.email) ? 'on' : ''}" data-email="${esc(u.email)}" onclick="Handover.toggleEditTarget('${esc(u.email)}')">${esc(u.name)}</span>`).join('')}
+            </div>
+            <div class="ho-edit-row">
+                <span class="ho-edit-label">期限</span>
+                <input type="date" value="${esc(draft.due)}">
+                <span class="ho-edit-msg"></span>
+                <span style="margin-left:auto; display:flex; gap:8px;">
+                    <button class="ho-btn" onclick="Handover.cancelEdit()">取消</button>
+                    <button class="ho-btn primary" onclick="Handover.saveEdit('${h.id}')">儲存修改</button>
+                </span>
+            </div>
+        </div>`;
+    }
+
     function remove(id, btn) {
         if (!btn.dataset.confirm) { btn.dataset.confirm = '1'; btn.textContent = '確定刪除？'; return; }
         items = items.filter(x => x.id !== id);
@@ -128,8 +184,8 @@
                 ${h.status === 'done' ? '<span class="ho-state">已完成</span>' : ''}
                 <span class="ho-time">${esc(h.updated)}</span>
             </div>
-            <div class="ho-text" onclick="Handover.toggle('${h.id}')">${esc(h.text)}</div>
-            ${open ? `
+            ${editing && editing.id === h.id ? editHtml(h) : `<div class="ho-text" onclick="Handover.toggle('${h.id}')">${esc(h.text)}</div>`}
+            ${open && !(editing && editing.id === h.id) ? `
                 <div class="ho-replies">
                     ${h.replies.map(r => `<div class="ho-reply ${/^[✔↺]/.test(r.text) ? 'system' : ''}"><b>${esc(r.name || r.email)}</b><span>${esc(r.text)}</span><time>${esc(r.time.slice(5))}</time></div>`).join('') || '<div class="ho-empty">還沒有人回覆</div>'}
                 </div>
@@ -141,9 +197,10 @@
                     ${h.status === 'done'
                         ? `<button class="ho-btn" onclick="Handover.setStatus('${h.id}', 'open')">↺ 重新開啟</button>`
                         : `<button class="ho-btn ok" onclick="Handover.setStatus('${h.id}', 'done')">✔ 標記完成</button>`}
+                    ${mine ? `<button class="ho-btn" onclick="Handover.startEdit('${h.id}')">✎ 編輯</button>` : ''}
                     ${mine ? `<button class="ho-btn danger" onclick="Handover.remove('${h.id}', this)">刪除</button>` : ''}
                 </div>`
-            : `<div class="ho-foot" onclick="Handover.toggle('${h.id}')">${h.replies.length ? `💬 ${h.replies.length} 則回覆　最新：${esc(last.name)}：${esc(last.text.slice(0, 40))}` : '點開回覆進度'}</div>`}
+            : editing && editing.id === h.id ? '' : `<div class="ho-foot" onclick="Handover.toggle('${h.id}')">${h.replies.length ? `💬 ${h.replies.length} 則回覆　最新：${esc(last.name)}：${esc(last.text.slice(0, 40))}` : '點開回覆進度'}</div>`}
         </div>`;
     }
 
@@ -157,6 +214,9 @@
 
     function renderView(v) {
         if (!loaded) { v.el.innerHTML = '<div class="ho-empty">讀取中...</div>'; return; }
+        // 編輯中重畫時，保留已輸入的內容與期限
+        const editBox = editing && v.el.querySelector(`[data-ho="${editing.id}"] .ho-edit`);
+        if (editBox) editing.draft = { text: editBox.querySelector('textarea').value, due: editBox.querySelector('input[type="date"]').value };
         const list = filtered(v);
         v.el.innerHTML = list.length ? list.map(cardHtml).join('') : `<div class="ho-empty">${v.emptyText || '目前沒有交接事項'}</div>`;
         // 保留回覆框中尚未送出的文字
@@ -217,11 +277,20 @@
         .ho-btn.danger { border-color: #da3633; color: #da3633; }
         .ho-btn.danger:hover { background: #da3633; color: #fff; }
         .ho-empty { color: var(--muted); font-size: 0.88rem; padding: 18px 0; text-align: center; }
+        .ho-edit { margin: 10px 0 4px; }
+        .ho-edit textarea { width: 100%; box-sizing: border-box; resize: vertical; padding: 8px 10px; background: var(--input-bg); border: 1px solid var(--accent); color: var(--text-strong); border-radius: 4px; font: inherit; font-size: 0.95rem; outline: none; }
+        .ho-edit-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+        .ho-edit-label { color: var(--muted); font-size: 0.8rem; margin-right: 4px; }
+        .ho-edit input[type="date"] { padding: 5px 8px; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-strong); border-radius: 4px; font-family: var(--font-mono); }
+        .ho-edit-msg { color: #da3633; font-size: 0.8rem; }
+        .ho-chip { border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); padding: 3px 10px; border-radius: 14px; cursor: pointer; font-size: 0.8rem; user-select: none; }
+        .ho-chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
         @media (max-width: 768px) { .ho-time { margin-left: 0; width: 100%; } }`;
     document.head.appendChild(style);
 
     window.Handover = {
         load, create, toggle, sendReply, remove,
+        startEdit, cancelEdit, saveEdit, toggleEditTarget,
         setStatus: setStatusOf,
         users: () => users.filter(u => u.email !== me),
         items: () => items,

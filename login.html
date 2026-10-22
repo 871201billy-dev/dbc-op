@@ -61,6 +61,16 @@
             .then(res => {
                 if (res.status !== 'success') { show(res.message || '登入失敗', 'error'); return; }
                 AUTH.save({ token: res.token, exp: res.exp, user: res.user });
+                // 帳號裡存的主題與交接已讀紀錄，先寫進這台電腦，進系統就是你的設定
+                try {
+                    if (res.prefs && res.prefs.theme) localStorage.setItem('opTheme', JSON.stringify(res.prefs.theme));
+                    if (res.prefs && res.prefs.seen) {
+                        const key = 'opHandoverSeen:' + res.user.email;
+                        const local = JSON.parse(localStorage.getItem(key)) || {};
+                        Object.keys(res.prefs.seen).forEach(id => { if (!local[id] || local[id] < res.prefs.seen[id]) local[id] = res.prefs.seen[id]; });
+                        localStorage.setItem(key, JSON.stringify(local));
+                    }
+                } catch (e) {}
                 show(`> 歡迎，${res.user.name}`);
                 // 回到登入前想去的頁面 (有權限的話)，否則到首頁
                 const next = params.get('next');
