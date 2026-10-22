@@ -38,7 +38,12 @@
         return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     }
     const contrastOf = hex => luminance(hex) > 0.35 ? '#000000' : '#ffffff';
-    const mix = (a, b, pct) => `color-mix(in srgb, ${a} ${100 - pct}%, ${b} ${pct}%)`;
+    // 兩色依比例混合，直接算成 #rrggbb (不用 CSS color-mix：報表圖片工具 html2canvas 讀不懂它算出的 color() 格式)
+    const mix = (a, b, pct) => {
+        const rgb = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+        const [x, y] = [rgb(a), rgb(b)];
+        return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * pct / 100).toString(16).padStart(2, '0')).join('');
+    };
 
     // 自訂配色：只選背景、卡片、文字三色，其餘依比例混出來
     function customVars(c) {
