@@ -10,7 +10,7 @@
     <style>
         /* 右側主視窗 */
         main { flex: 1; padding: 40px; overflow-y: auto; }
-        .content-card { background: var(--surface); padding: 36px; border-radius: 4px; border: 1px solid var(--border); min-height: 80%; box-shadow: 0 20px 40px var(--shadow); }
+        .content-card { background: var(--surface); padding: 50px; border-radius: 4px; border: 1px solid var(--border); min-height: 80%; box-shadow: 0 20px 40px var(--shadow); }
         h1 { margin-top: 0; color: var(--text-strong); font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 30px; }
         .terminal-box { background: var(--input-bg); border: 1px solid var(--border); padding: 20px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 30px; }
         .terminal-box span.highlight { color: var(--accent); }
@@ -26,30 +26,29 @@
         .primary-btn:disabled { border-color: var(--border-strong); color: var(--muted); cursor: not-allowed; background: transparent; }
 
         /* 完美還原 Excel 的表格樣式 */
-        /* 表格寬度跟著容器走，字級依容器寬度自動縮放 (cqi = 容器寬度的 1%)，整張表一個畫面放得下，方便截圖回報 */
-        .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; container-type: inline-size; }
-        table { width: 100%; border-collapse: collapse; font-size: clamp(12px, 1.2cqi, 20px); font-weight: 700; font-family: var(--font-main); background: var(--bg); }
-        th, td { border: 1px solid var(--border); padding: 0.65em 0.8em; text-align: right; white-space: nowrap; color: var(--text-strong); }
+        .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; }
+        table { width: max-content; border-collapse: collapse; font-size: 0.85rem; font-weight: 700; font-family: var(--font-main); background: var(--bg); }
+        th, td { border: 1px solid var(--border); padding: 10px 15px; text-align: right; white-space: nowrap; color: var(--text-strong); }
 
         /* 各區塊的項目名稱欄 (行程 / 課程 / 同業專案) 靠左對齊 */
         .col-label { text-align: left; color: var(--accent); background: var(--surface); }
         td:first-child, th:first-child { position: sticky; left: 0; z-index: 1; }
 
         /* 日期列 (Row 1) */
-        .row-date th { background: var(--surface-2); color: var(--text-strong); text-align: center; font-size: 1.05em; letter-spacing: 1px; }
+        .row-date th { background: var(--surface-2); color: var(--text-strong); text-align: center; font-size: 0.9rem; letter-spacing: 1px; }
 
-        /* 標題列 (Row 2)：分類名稱太長時自動換行 */
-        .row-header th { background: var(--surface-3); color: var(--text-strong); text-align: center; white-space: normal; word-break: keep-all; }
+        /* 標題列 (Row 2) */
+        .row-header th { background: var(--surface-3); color: var(--text-strong); text-align: center; }
         .row-header th.col-label { color: var(--accent); }
 
         /* 黑色分隔列 (Spacer Row) */
         .row-spacer td { background: var(--input-bg) !important; color: var(--input-bg) !important; height: 10px; padding: 0; border: none; }
 
         /* 空白分隔欄 (Spacer Column) */
-        .col-spacer { background: var(--input-bg) !important; width: 1.2em; padding: 0 !important; border-top: none; border-bottom: none; }
+        .col-spacer { background: var(--input-bg) !important; min-width: 20px; border-top: none; border-bottom: none; }
 
         /* 總計列 (Grand Total) */
-        .row-grand-total td { background: var(--surface-2); color: var(--text-strong); font-size: 1.1em; border-top: 2px solid var(--accent); }
+        .row-grand-total td { background: var(--surface-2); color: var(--text-strong); border-top: 2px solid var(--accent); }
         .row-grand-total td.col-label { color: var(--accent); }
 
         tr:hover td:not(.col-spacer):not(.row-spacer td) { background: var(--surface-3); }
@@ -189,8 +188,7 @@
                             tr.appendChild(td);
                         }
                     } else {
-                        // 表頭的分類名稱只在「+」後面換行 (如 野澤+ / 東京)，不把名稱從中間切開
-                        td.innerText = rowIndex === 1 ? String(cell).replace(/\+/g, '+​') : cell;
+                        td.innerText = cell;
                         // 套用空白分隔欄樣式
                         if (spacerCols.has(colIndex)) {
                             td.className = 'col-spacer';
