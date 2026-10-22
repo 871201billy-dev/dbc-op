@@ -61,12 +61,12 @@
         return '';
     }
 
-    // ===== ① ERP 旅客報表 (個團設定加購明細) =====
+    // ===== ① 團體加購紀錄表 (ERP 路徑 d-c，工作表名稱「個團設定加購明細」) =====
     async function parseErp(XLSX, workbook) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false, dateNF: 'yyyy/mm/dd' });
         const headerIdx = rows.findIndex(r => r.some(c => clean(c) === '團號') && r.some(c => clean(c) === '訂單編號'));
-        if (headerIdx < 0) throw new Error('找不到「團號」「訂單編號」欄位，請確認是 ERP 的旅客明細報表');
+        if (headerIdx < 0) throw new Error('找不到「團號」「訂單編號」欄位，請確認是 ERP 的「團體加購紀錄表」(d-c)');
         const h = rows[headerIdx];
         const col = {
             group: findCol(h, ['團號']), dep: findCol(h, ['出發日期']), order: findCol(h, ['訂單編號']),
@@ -106,7 +106,7 @@
         return { rows: out, groups: groups.size, missingColumns: fieldCols.filter(f => f.col < 0).map(f => f.label) };
     }
 
-    // ===== ② 尾款表 (參團旅客應收明細表，一個工作表一團) =====
+    // ===== ② 參團旅客應收明細表 (ERP 路徑 k-z-A，一個工作表一團) =====
     async function parsePayment(XLSX, workbook) {
         const out = [];
         let sheets = 0;
@@ -134,7 +134,7 @@
                 });
             }
         }
-        if (!sheets) throw new Error('找不到「訂單編號」「旅客姓名」欄位，請確認是 ERP 的參團旅客應收明細表');
+        if (!sheets) throw new Error('找不到「訂單編號」「旅客姓名」欄位，請確認是 ERP 的「參團旅客應收明細表」(k-z-A)');
         return { rows: out, sheets };
     }
 
