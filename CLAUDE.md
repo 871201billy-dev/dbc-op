@@ -23,7 +23,8 @@
 | `privacy.html` | 隱私權政策 (Google OAuth 發布需要) |
 | `index.html` | **首頁** (所有登入者)：上方「交接給我的」，下方「每日人數查詢」(有 attendance_query 才顯示) |
 | `todo.html` | 待辦與交接 (所有登入者)，兩個分頁：<br>• 我的待辦：每人只看得到自己的 (「待辦事項」工作表)。先存瀏覽器 (localStorage `opCache:todoLocal:*`) 再用 `todoBatch` 整批同步，未送出的變更在 `opTodoOutbox:*`，下次開啟自動補送<br>• 工作交接：發給特定同事或「所有人」(ALL)，建立者與對象可回覆進度、標記完成；只有建立者能刪除 (「交接」「交接回覆」工作表) |
-| `handover.js` | 工作交接的清單元件，首頁與待辦頁共用；「新」標籤用 localStorage 記錄已讀 |
+| `handover.js` | 工作交接的清單元件，首頁與待辦頁共用；「新」標籤的已讀紀錄存在帳號 (prefs) |
+| `traveler.html` / `traveler-parse.js` | 旅客進度表：上傳 ERP 旅客報表 / 尾款表 (瀏覽器內解析、只上傳遮罩姓名與檢查結果)，依出發日 + 地區查詢，勾選合約 / 保險 / 尾款 / 護照、個別備註 |
 
 頁面與權限：`index.html`、`todo.html` 所有登入者 (auth.js OPEN_PAGES)、`attendance.html` attendance_import、`b2b_monitor.html` b2b_monitor、`b2b_settings.html` b2b_settings、`op_room_jp.html` room_jp、`op_room_kr.html` room_kr、`admin.html` admin。新增頁面時要同時改 `auth.js` 的 PAGE_PERMS、`sidebar.js`、登入驗證中心 GAS 的 FEATURES。
 
@@ -84,7 +85,12 @@ GAS 原始碼不在 repo 裡 (`gas_下載/` 已被 .gitignore 排除，因含金
 ### 1. 交接記事 — ✅ 2026-10-22 已上線為「工作交接」(見 todo.html)
 之後可能的延伸：建立者修改交接內容 (後端 handoverSave 已支援，前端尚未做編輯介面)、依團號關聯、附件。
 
-### 2. 旅客進度表 (資料 / 尾款 / 合約 / 保險…) (2026-10-22 提出，不急，等使用者說開始再做)
+### 2. 旅客進度表 — ✅ 2026-10-22 已上線 (`traveler.html`、`traveler-parse.js`)
+- 權限 traveler_view / traveler_check / traveler_upload (使用者在帳號管理自行分配；管理員角色自動補上)
+- 資料在「DBC OP 帳號權限」試算表的「旅客進度」「旅客進度分類」工作表 (登入驗證中心 GAS 的 traveler* action)
+- 勾選項目：合約、保險、尾款、護照 (尾款表顯示已清時自動勾選)；每位旅客可寫備註；尾款只存清 / 未清，不存金額
+- 解析在瀏覽器內完成 (`traveler-parse.js`，可在 Node 用 vm 載入測試)；ERP 的 .xls 訂單編號前會夾帶控制字元，已在 clean() 去除
+以下為當初的需求紀錄：
 背景：本平台是輔助公司 ERP 的工具，不是主系統。旅客相關作業部分在 ERP 內、部分在 ERP 外進行。
 構想：
 - 從 ERP 匯出報表 (Excel) → 上傳到平台 → 自動更新 ERP 裡有的欄位 (旅客、訂單、團號、尾款狀態等)

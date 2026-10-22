@@ -36,6 +36,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 ${roomLinks ? `<button class="menu-btn" onclick="toggleSubmenu('room-menu')" id="nav-room">[ 房控核算系統 ] ▾</button>
                 <div class="submenu" id="room-menu">${roomLinks}</div>` : ''}
 
+                ${can('traveler_view') ? `<button class="menu-btn" onclick="location.href='traveler.html'" id="nav-traveler">[ 旅客進度表 ]</button>` : ''}
+
                 ${can('admin') && user ? `<button class="menu-btn" onclick="location.href='admin.html'" id="nav-admin">[ 帳號管理 ]</button>` : ''}
 
             </div>
@@ -75,7 +77,8 @@ document.addEventListener("DOMContentLoaded", function() {
         'op_room_jp.html': { btn: 'nav-room', sub: 'nav-room-jp', menu: 'room-menu' },
         'op_room_kr.html': { btn: 'nav-room', sub: 'nav-room-kr', menu: 'room-menu' },
         'admin.html': { btn: 'nav-admin' },
-        'todo.html': { btn: 'nav-todo' }
+        'todo.html': { btn: 'nav-todo' },
+        'traveler.html': { btn: 'nav-traveler' }
     };
 
     const activeItem = pathMap[currentPath];

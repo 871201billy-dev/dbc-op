@@ -14,6 +14,7 @@
         'b2b_settings.html': 'b2b_settings',
         'op_room_jp.html': 'room_jp',
         'op_room_kr.html': 'room_kr',
+        'traveler.html': 'traveler_view',
         'admin.html': 'admin'
     };
     // 所有登入者都能使用的頁面 (不需要特定權限)；首頁的每日人數查詢區塊另依 attendance_query 顯示

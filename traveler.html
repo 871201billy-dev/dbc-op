@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ＤＢＣ ｏｐ工具 - 旅客進度表</title>
+    <link rel="stylesheet" href="common.css">
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <style>
+        main { flex: 1; padding: 40px; overflow-y: auto; }
+        .content-card { background: var(--surface); padding: 36px; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 20px 40px var(--shadow); margin-bottom: 30px; }
+        h1 { margin-top: 0; color: var(--text-strong); font-weight: 300; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 8px; }
+        .subtitle { color: var(--muted); font-size: 0.85rem; margin: 0 0 24px; }
+        .primary-btn, .ghost-btn { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 8px 18px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .primary-btn:hover { background: var(--accent); color: var(--accent-contrast); }
+        .ghost-btn { border-color: var(--border-strong); color: var(--muted); }
+        .ghost-btn:hover { color: var(--text-strong); border-color: var(--muted); }
+
+        /* 上傳區 */
+        .upload-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 4px; margin-bottom: 24px; }
+        .upload-bar .label { color: var(--muted); font-size: 0.82rem; margin-right: 4px; }
+        .upload-msg { flex: 1 1 100%; font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); white-space: pre-wrap; }
+        .upload-msg.ok { color: #3fb950; }
+        .upload-msg.err { color: #da3633; }
+
+        /* 搜尋 */
+        .search { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+        .search select { padding: 9px 12px; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-strong); border-radius: 4px; font-family: var(--font-mono); font-size: 0.92rem; }
+        .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .chip { border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text); padding: 6px 14px; border-radius: 16px; cursor: pointer; font-size: 0.88rem; user-select: none; }
+        .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+        .chip small { opacity: 0.75; margin-left: 4px; }
+        .only-open { color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer; margin-left: auto; }
+
+        /* 摘要 */
+        .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .stat { padding: 6px 12px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); font-size: 0.85rem; color: var(--text); }
+        .stat b { color: var(--text-strong); margin-left: 4px; }
+        .stat.warn b { color: #da3633; }
+
+        /* 表格 */
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        th, td { border-bottom: 1px solid var(--border); padding: 9px 10px; text-align: left; vertical-align: middle; }
+        th { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 0.8rem; white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+        th.c, td.c { text-align: center; }
+        td.order { font-family: var(--font-mono); color: var(--accent); border-right: 1px solid var(--border); white-space: nowrap; vertical-align: top; }
+        tr.order-start td { border-top: 2px solid var(--border-strong); }
+        td.name { color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+        .tag { display: inline-block; padding: 1px 8px; border-radius: 9px; font-size: 0.72rem; background: var(--surface-3); color: var(--muted); white-space: nowrap; margin: 1px 2px 1px 0; }
+        .tag.miss { background: rgba(218,54,51,0.14); color: #da3633; }
+        .tag.warn { background: rgba(210,153,34,0.18); color: #d29922; }
+        .tag.ok { background: rgba(63,185,80,0.14); color: #3fb950; }
+        tr.inactive td { opacity: 0.45; }
+        td input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+        td input[type="checkbox"]:disabled { cursor: not-allowed; }
+        .pay { display: block; font-size: 0.72rem; margin-top: 2px; }
+        .pay.paid { color: #3fb950; }
+        .pay.unpaid { color: #da3633; font-weight: 600; }
+        .note { min-width: 160px; color: var(--text); font-size: 0.85rem; cursor: text; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .note:empty::before { content: '＋ 備註'; color: var(--muted-2); }
+        .note.readonly { cursor: default; }
+        .note.readonly:empty::before { content: ''; }
+        .note textarea { width: 100%; min-width: 180px; box-sizing: border-box; padding: 6px 8px; background: var(--input-bg); border: 1px solid var(--accent); color: var(--text-strong); border-radius: 3px; font: inherit; font-size: 0.85rem; resize: vertical; outline: none; }
+        .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+        .status { margin-top: 12px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted-2); min-height: 1em; }
+
+        /* 分類設定 */
+        #settings-panel { border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-bottom: 24px; background: var(--bg); }
+        #settings-panel table td { padding: 4px; border: none; }
+        #settings-panel input { width: 100%; box-sizing: border-box; padding: 6px 8px; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-strong); border-radius: 3px; font-size: 0.85rem; }
+        #settings-panel .hint { color: var(--muted); font-size: 0.8rem; margin: 0 0 10px; line-height: 1.6; }
+        .row-del { background: none; border: none; color: var(--muted-2); cursor: pointer; font-size: 1rem; }
+        .row-del:hover { color: #da3633; }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <main>
+        <div class="content-card">
+            <h1>[ 旅客進度表 ]</h1>
+            <p class="subtitle">依出發日與行程查看旅客資料是否完整、合約 / 保險 / 尾款 / 護照是否完成。系統只保存檢查結果與遮罩姓名，不保存完整個資。</p>
+
+            <div class="upload-bar" id="upload-bar" hidden>
+                <span class="label">更新資料：</span>
+                <label class="ghost-btn">① 上傳 ERP 旅客報表<input type="file" accept=".xlsx,.xls" hidden onchange="uploadFile(this, 'erp')"></label>
+                <label class="ghost-btn">② 上傳尾款表<input type="file" accept=".xlsx,.xls" hidden onchange="uploadFile(this, 'pay')"></label>
+                <button class="ghost-btn" onclick="toggleSettings()">⚙ 行程分類設定</button>
+                <div class="upload-msg" id="upload-msg">Excel 只在這台電腦的瀏覽器裡解析，只會上傳遮罩姓名與檢查結果。</div>
+            </div>
+
+            <div id="settings-panel" hidden>
+                <p class="hint">依團號開頭判斷「地區」與「團型」，由上往下第一個符合的規則為準。前綴可用逗號分隔多個，也可用 * 萬用字元（例如 <code>S4-*-B2B*</code>）。</p>
+                <table><thead><tr><th>地區</th><th>團型</th><th>團號前綴</th><th></th></tr></thead><tbody id="settings-body"></tbody></table>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="ghost-btn" onclick="addSettingRow()">＋ 新增規則</button>
+                    <button class="primary-btn" onclick="saveSettings()">儲存分類設定</button>
+                    <span class="upload-msg" id="settings-msg" style="flex:1;"></span>
+                </div>
+            </div>
+
+            <div class="search">
+                <select id="date-select" onchange="selectDate(this.value)"><option>讀取中...</option></select>
+                <div class="chips" id="region-chips"></div>
+                <label class="only-open"><input type="checkbox" id="only-open" onchange="render()"> 只看未完成</label>
+            </div>
+
+            <div class="summary" id="summary"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead id="thead"></thead>
+                    <tbody id="tbody"><tr><td class="empty">讀取中...</td></tr></tbody>
+                </table>
+            </div>
+            <div class="status" id="status"></div>
+        </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="traveler-parse.js"></script>
+    <script>
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const statusEl = document.getElementById('status');
+        let meta = null;          // { dates, settings, checks, canCheck, canUpload }
+        let rows = [];
+        let current = { date: '', region: '' };
+
+        function api(body) { return fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify(body) }).then(r => r.json()); }
+
+        // ===== 讀取 =====
+        function loadMeta(keepSelection) {
+            return api({ action: 'travelerMeta' }).then(res => {
+                if (res.status !== 'success') { document.getElementById('tbody').innerHTML = `<tr><td class="empty">${esc(res.message)}</td></tr>`; return; }
+                meta = res;
+                document.getElementById('upload-bar').hidden = !meta.canUpload;
+                const dates = Object.keys(meta.dates).sort();
+                const sel = document.getElementById('date-select');
+                if (!dates.length) {
+                    sel.innerHTML = '<option>尚無資料</option>';
+                    document.getElementById('tbody').innerHTML = `<tr><td class="empty">還沒有旅客資料${meta.canUpload ? '，請先上傳 ERP 旅客報表' : '，請等有上傳權限的同事上傳 ERP 報表'}。</td></tr>`;
+                    return;
+                }
+                sel.innerHTML = dates.map(d => {
+                    const total = Object.values(meta.dates[d]).reduce((a, b) => a + b, 0);
+                    return `<option value="${d}">${d}（${'日一二三四五六'[new Date(d).getDay()]}）${total} 人</option>`;
+                }).join('');
+                // 預設：今天之後最近的出發日
+                const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
+                const pick = keepSelection && meta.dates[current.date] ? current.date : (dates.find(d => d >= today) || dates[dates.length - 1]);
+                sel.value = pick;
+                selectDate(pick, keepSelection);
+            }).catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
+        }
+
+        function selectDate(date, keepRegion) {
+            current.date = date;
+            const regions = meta.dates[date] || {};
+            if (!keepRegion || !regions[current.region]) current.region = Object.keys(regions).sort((a, b) => regions[b] - regions[a])[0] || '';
+            document.getElementById('region-chips').innerHTML = Object.keys(regions).map(r =>
+                `<span class="chip ${r === current.region ? 'on' : ''}" onclick="selectRegion('${esc(r)}')">${esc(r)}<small>${regions[r]}</small></span>`).join('');
+            loadList();
+        }
+
+        function selectRegion(region) { current.region = region; selectDate(current.date, true); }
+
+        function loadList() {
+            document.getElementById('tbody').innerHTML = '<tr><td class="empty">讀取中...</td></tr>';
+            const { date, region } = current;
+            fetchWithCache(GAS_API.AUTH, { action: 'travelerList', date, region }, res => {
+                if (date !== current.date || region !== current.region) return;
+                if (res.status !== 'success') { statusEl.textContent = '讀取失敗：' + res.message; return; }
+                if (pending.length === 0) { rows = res.rows; render(); }
+            }).catch(err => { statusEl.textContent = '網路錯誤：' + err.message; });
+        }
+
+        // ===== 畫面 =====
+        const isActive = r => r.latest && r.status !== '取消';
+        const isChecked = (r, item) => !!r.checks[item] || (item === '尾款' && r.pay === '清');
+        const isDone = r => !r.missing.length && !r.passport && meta.checks.every(c => isChecked(r, c));
+
+        function render() {
+            if (!meta) return;
+            const onlyOpen = document.getElementById('only-open').checked;
+            const active = rows.filter(isActive);
+            // 摘要 (不含取消與不在最新報表的旅客)
+            const count = fn => active.filter(fn).length;
+            document.getElementById('summary').innerHTML = [
+                `<span class="stat">旅客<b>${active.length}</b></span>`,
+                `<span class="stat ${count(r => r.missing.length) ? 'warn' : ''}">資料不完整<b>${count(r => r.missing.length)}</b></span>`,
+                `<span class="stat ${count(r => r.passport) ? 'warn' : ''}">護照效期<b>${count(r => r.passport)}</b></span>`
+            ].concat(meta.checks.map(c => `<span class="stat ${count(r => !isChecked(r, c)) ? 'warn' : ''}">${c}未完成<b>${count(r => !isChecked(r, c))}</b></span>`)).join('');
+
+            document.getElementById('thead').innerHTML = `<tr><th>訂單編號</th><th>旅客</th><th>團型</th><th>資料完整度</th>${meta.checks.map(c => `<th class="c">${c}</th>`).join('')}<th>備註</th></tr>`;
+
+            // 同一張訂單的旅客排在一起 (取消的排在該訂單最後)
+            let list = rows.slice().sort((a, b) => a.group.localeCompare(b.group) || a.order.localeCompare(b.order, undefined, { numeric: true }) || (isActive(b) - isActive(a)));
+            if (onlyOpen) list = list.filter(r => isActive(r) && !isDone(r));
+            if (!list.length) {
+                document.getElementById('tbody').innerHTML = `<tr><td class="empty" colspan="${5 + meta.checks.length}">${onlyOpen ? '這一團的旅客都完成了 👍' : '沒有旅客資料'}</td></tr>`;
+                return;
+            }
+            // 依訂單分組：訂單編號在第一列，跨列顯示
+            const span = {};
+            list.forEach(r => { span[r.order] = (span[r.order] || 0) + 1; });
+            const shown = new Set();
+            document.getElementById('tbody').innerHTML = list.map(r => {
+                const first = !shown.has(r.order);
+                shown.add(r.order);
+                const tags = [];
+                if (r.status === '取消') tags.push('<span class="tag">取消</span>');
+                if (!r.latest) tags.push('<span class="tag" title="這位旅客不在最近一次上傳的 ERP 報表中">不在最新報表</span>');
+                const data = (r.missing.length ? r.missing.map(m => `<span class="tag miss">缺${esc(m)}</span>`).join('') : '<span class="tag ok">✓ 完整</span>')
+                    + (r.passport ? `<span class="tag warn">護照${esc(r.passport)}</span>` : '');
+                const checks = meta.checks.map(c => {
+                    const info = r.checks[c];
+                    const auto = c === '尾款' && r.pay === '清';
+                    const title = info ? `${info.by} 於 ${info.at} 勾選` : auto ? '尾款表顯示已付清' : '';
+                    const payLabel = c === '尾款' && r.pay ? `<span class="pay ${r.pay === '清' ? 'paid' : 'unpaid'}">${r.pay}</span>` : '';
+                    return `<td class="c" title="${esc(title)}"><input type="checkbox" ${isChecked(r, c) ? 'checked' : ''} ${!meta.canCheck || auto ? 'disabled' : ''} onchange="toggleCheck('${r.key}', '${c}', this.checked)">${payLabel}</td>`;
+                }).join('');
+                return `<tr class="${first ? 'order-start' : ''} ${isActive(r) ? '' : 'inactive'}">
+                    ${first ? `<td class="order" rowspan="${span[r.order]}">${esc(r.order)}</td>` : ''}
+                    <td class="name">${esc(r.name)} ${tags.join('')}</td>
+                    <td>${r.type ? `<span class="tag">${esc(r.type)}</span>` : ''}</td>
+                    <td>${data}</td>
+                    ${checks}
+                    <td><div class="note ${meta.canCheck ? '' : 'readonly'}" onclick="editNote('${r.key}', this)">${esc(r.note)}</div></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ===== 勾選與備註：畫面先更新，0.4 秒內的變更合併成一次送出 =====
+        let pending = [], flushTimer = null, syncing = false;
+        function queue(op) {
+            pending.push(op);
+            statusEl.textContent = '✓ 已儲存 · 同步中…';
+            clearTimeout(flushTimer);
+            flushTimer = setTimeout(flush, 400);
+        }
+        function flush() {
+            if (syncing || !pending.length) return;
+            syncing = true;
+            const batch = pending.slice();
+            api({ action: 'travelerCheck', ops: batch })
+                .then(res => {
+                    if (res.status !== 'success') throw new Error(res.message);
+                    pending = pending.slice(batch.length);
+                    statusEl.textContent = pending.length ? '✓ 已儲存 · 同步中…' : '✓ 已儲存 · 已同步到雲端';
+                })
+                .catch(err => { statusEl.textContent = '同步失敗，5 秒後重試：' + err.message; setTimeout(flush, 5000); })
+                .then(() => { syncing = false; if (pending.length) flush(); });
+        }
+        window.addEventListener('beforeunload', e => { if (pending.length) { e.preventDefault(); e.returnValue = ''; } });
+
+        function toggleCheck(key, item, value) {
+            const r = rows.find(x => x.key === key);
+            if (value) r.checks[item] = { by: AUTH.user.name, at: '剛剛' };
+            else delete r.checks[item];
+            render();
+            queue({ key, item, value });
+        }
+
+        function editNote(key, el) {
+            if (!meta.canCheck || el.querySelector('textarea')) return;
+            const r = rows.find(x => x.key === key);
+            el.innerHTML = `<textarea rows="2" maxlength="500">${esc(r.note)}</textarea>`;
+            const box = el.querySelector('textarea');
+            box.focus();
+            let done = false;
+            const finish = save => {
+                if (done) return;
+                done = true;
+                const note = box.value.trim();
+                if (save && note !== r.note) { r.note = note; queue({ key, note }); }
+                render();
+            };
+            box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); finish(true); } if (e.key === 'Escape') finish(false); });
+            box.addEventListener('blur', () => finish(true));
+        }
+
+        // ===== 上傳：在瀏覽器解析後只送出檢查結果 =====
+        function uploadFile(input, kind) {
+            const file = input.files[0];
+            input.value = '';
+            if (!file) return;
+            const msg = document.getElementById('upload-msg');
+            msg.className = 'upload-msg';
+            msg.textContent = `正在這台電腦上解析「${file.name}」…`;
+            file.arrayBuffer()
+                .then(buf => {
+                    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+                    return kind === 'erp' ? TravelerParse.parseErp(XLSX, wb) : TravelerParse.parsePayment(XLSX, wb);
+                })
+                .then(parsed => {
+                    if (!parsed.rows.length) throw new Error('檔案裡沒有找到旅客資料');
+                    msg.textContent = kind === 'erp'
+                        ? `解析完成：${parsed.groups} 團、${parsed.rows.length} 位旅客，正在上傳檢查結果…`
+                        : `解析完成：${parsed.sheets} 團、${parsed.rows.length} 位旅客，正在上傳尾款狀態…`;
+                    return api({ action: kind === 'erp' ? 'travelerUploadErp' : 'travelerUploadPay', rows: parsed.rows })
+                        .then(res => ({ res, parsed }));
+                })
+                .then(({ res, parsed }) => {
+                    if (res.status !== 'success') throw new Error(res.message);
+                    msg.className = 'upload-msg ok';
+                    let text = '✓ ' + res.message;
+                    if (parsed.missingColumns && parsed.missingColumns.length) text += `\n（報表中找不到這些欄位，所以沒有檢查：${parsed.missingColumns.join('、')}）`;
+                    if (res.unmatched && res.unmatched.length) text += `\n（對不到的多半是 ERP 報表匯出後才新增、或已取消的訂單）`;
+                    msg.textContent = text;
+                    loadMeta(true);
+                })
+                .catch(err => { msg.className = 'upload-msg err'; msg.textContent = '✗ ' + err.message; });
+        }
+
+        // ===== 行程分類設定 =====
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.hidden = !panel.hidden;
+            if (!panel.hidden) document.getElementById('settings-body').innerHTML = meta.settings.map(settingRow).join('');
+        }
+        function settingRow(s) {
+            return `<tr><td><input class="s-region" value="${esc(s.region)}"></td><td><input class="s-type" value="${esc(s.type)}"></td>
+                <td><input class="s-prefix" value="${esc((s.prefixes || []).join(', '))}"></td><td><button class="row-del" onclick="this.closest('tr').remove()" title="刪除">✕</button></td></tr>`;
+        }
+        function addSettingRow() { document.getElementById('settings-body').insertAdjacentHTML('beforeend', settingRow({ region: '', type: '', prefixes: [] })); }
+        function saveSettings() {
+            const msg = document.getElementById('settings-msg');
+            const list = [...document.querySelectorAll('#settings-body tr')].map(tr => ({
+                region: tr.querySelector('.s-region').value, type: tr.querySelector('.s-type').value, prefixes: tr.querySelector('.s-prefix').value
+            }));
+            msg.textContent = '儲存中…';
+            api({ action: 'travelerSaveSettings', rows: list }).then(res => {
+                msg.className = 'upload-msg ' + (res.status === 'success' ? 'ok' : 'err');
+                msg.textContent = res.message;
+                if (res.status === 'success') loadMeta(true);
+            });
+        }
+
+        loadMeta();
+    </script>
+</body>
+</html>
