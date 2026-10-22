@@ -105,22 +105,22 @@
             btn.disabled = true;
             tbody.innerHTML = '<tr><td style="text-align: center; color: var(--muted); padding: 30px;">[ 正在向伺服器請求資料... ]</td></tr>';
 
-            fetch(GAS_API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: "getAttendanceByDate", date: formattedDate })
-            })
-            .then(res => res.json())
-            .then(res => {
-                btn.innerText = "[ 執行查詢 ]";
-                btn.disabled = false;
-
+            // 同一天查過的話先顯示上次結果，再向伺服器確認最新資料
+            fetchWithCache(GAS_API_URL, { action: "getAttendanceByDate", date: formattedDate }, (res, meta) => {
                 if (res.status === 'success') {
-                    log.innerHTML = `> 查詢成功：${formattedDate}<br>> 已載入原始報表格式。`;
+                    log.innerHTML = meta.fromCache
+                        ? `> 先顯示上次查詢 ${formattedDate} 的結果，正在更新...`
+                        : `> 查詢成功：${formattedDate}<br>> 已載入原始報表格式。`;
                     renderExactTable(res.data);
                 } else {
                     log.innerHTML = `> <span style="color: #da3633">查詢失敗：${res.message}</span>`;
                     tbody.innerHTML = `<tr><td style="text-align: center; color: #da3633; padding: 30px;">[ ${res.message} ]</td></tr>`;
                 }
+            })
+            .then(result => {
+                btn.innerText = "[ 執行查詢 ]";
+                btn.disabled = false;
+                if (!result.updated) log.innerHTML = `> 查詢成功：${formattedDate}（已是最新資料）<br>> 已載入原始報表格式。`;
             })
             .catch(err => {
                 btn.innerText = "[ 執行查詢 ]";

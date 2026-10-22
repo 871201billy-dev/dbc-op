@@ -65,25 +65,23 @@
     <script>
         const GAS_API_URL = GAS_API.B2B; // 網址設定在 config.js
         
-        window.onload = () => { fetchOrders(); };
+        window.onload = () => { fetchOrders(true); };
 
-        function fetchOrders() {
+        // useCache：開頁時先顯示上次的資料；按「刷新數據」時直接向伺服器重抓
+        function fetchOrders(useCache) {
             const btn = document.getElementById('refresh-btn');
             const tbody = document.getElementById('orderBody');
             const log = document.getElementById('sys-log');
-            
-            btn.disabled = true; 
+
+            btn.disabled = true;
             btn.innerText = "[ 讀取中... ]";
             tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--muted);">[ FETCHING DATA... ]</td></tr>`;
-            
-            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "getOrders" }) })
-            .then(res => res.json())
-            .then(res => {
-                btn.disabled = false; 
-                btn.innerText = "[ 刷新數據 ]";
-                
+
+            fetchWithCache(GAS_API_URL, { action: "getOrders" }, (res, meta) => {
                 if(res.status === 'success') {
-                    log.innerHTML += `<br>> <span class="highlight">連線成功！已擷取最新數據。</span>`;
+                    log.innerHTML += meta.fromCache
+                        ? `<br>> 先顯示上次的資料，正在更新...`
+                        : `<br>> <span class="highlight">連線成功！已擷取最新數據。</span>`;
                     if(res.data && res.data.orders) {
                         renderOrderTable(res.data.orders);
                     } else {
@@ -93,6 +91,11 @@
                     log.innerHTML += `<br>> <span style="color: #da3633">錯誤：${res.message}</span>`;
                     tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #da3633;">[ 讀取失敗：${res.message} ]</td></tr>`;
                 }
+            }, { skipCache: !useCache })
+            .then(result => {
+                btn.disabled = false;
+                btn.innerText = "[ 刷新數據 ]";
+                if (!result.updated) log.innerHTML += `<br>> <span class="highlight">已是最新數據。</span>`;
             }).catch(e => {
                 btn.disabled = false; 
                 btn.innerText = "[ 刷新數據 ]";

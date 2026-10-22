@@ -99,15 +99,27 @@
 
         window.onload = () => { fetchDatabase(); };
 
-        function fetchDatabase() {
-            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "getSavedRooms", country: "JAPAN" }) })
-            .then(res => res.json()).then(res => {
-                if(res.status === 'success') {
-                    dbData = res.data;
-                    renderDbTable();
-                    document.getElementById('sys-log').innerHTML += `<br>> <span style="color: #3fb950">資料庫讀取成功。</span>`;
+        // 使用者是否改過資料庫表格 (有改就不讓背景更新蓋掉)
+        let hasUnsavedEdits = false;
+        document.addEventListener('input', e => { if (e.target.closest('#db-table')) hasUnsavedEdits = true; });
+
+        // skipCache：儲存後重新讀取時不先顯示舊資料
+        function fetchDatabase(skipCache) {
+            const log = document.getElementById('sys-log');
+            fetchWithCache(GAS_API_URL, { action: "getSavedRooms", country: "JAPAN" }, (res, meta) => {
+                if (res.status !== 'success') { log.innerHTML += `<br>> <span style="color: #da3633">讀取失敗：${res.message}</span>`; return; }
+                if (meta.changed && hasUnsavedEdits) {
+                    log.innerHTML += `<br>> <span style="color: #d29922">雲端有較新的資料，但你正在編輯，所以沒有自動更新。儲存前請先重新整理頁面。</span>`;
+                    return;
                 }
-            });
+                dbData = res.data;
+                renderDbTable();
+                log.innerHTML += meta.fromCache
+                    ? `<br>> 先顯示上次的資料，正在向雲端確認最新資料...`
+                    : `<br>> <span style="color: #3fb950">資料庫讀取成功${meta.changed ? '（已更新為最新資料）' : ''}。</span>`;
+            }, { skipCache: skipCache })
+            .then(result => { if (!result.updated) log.innerHTML += `<br>> <span style="color: #3fb950">已是最新資料。</span>`; })
+            .catch(err => { log.innerHTML += `<br>> <span style="color: #da3633">網路錯誤：${err.message}</span>`; });
         }
 
         function renderDbTable() {
@@ -263,7 +275,8 @@
                 if(res.status === 'success') {
                     document.getElementById('sys-log').innerHTML = `> <span style="color: #3fb950">儲存成功！資料庫已更新。</span>`;
                     document.getElementById('diff-section').style.display = 'none';
-                    fetchDatabase();
+                    hasUnsavedEdits = false;
+                    fetchDatabase(true);
                 }
             });
         }

@@ -92,13 +92,16 @@
             return fetch(GAS_API.AUTH, { method: 'POST', body: JSON.stringify(body) }).then(r => r.json());
         }
 
-        function load() {
-            api({ action: 'getAdminData' }).then(res => {
+        // skipCache：儲存後重新讀取時不先顯示舊資料
+        function load(skipCache) {
+            fetchWithCache(GAS_API.AUTH, { action: 'getAdminData' }, (res, meta) => {
                 if (res.status !== 'success') { log.innerHTML = `> <span style="color:#da3633">${esc(res.message)}</span>`; return; }
                 data = res;
-                log.innerHTML = `> 共 ${res.users.length} 位使用者、${res.roles.length} 種角色。`;
+                log.innerHTML = `> 共 ${res.users.length} 位使用者、${res.roles.length} 種角色。` + (meta.fromCache ? '（更新中...）' : '');
                 render();
-            }).catch(err => { log.innerHTML = `> <span style="color:#da3633">網路錯誤：${esc(err.message)}</span>`; });
+            }, { skipCache: skipCache })
+            .then(result => { if (!result.updated) log.innerHTML = `> 共 ${data.users.length} 位使用者、${data.roles.length} 種角色。`; })
+            .catch(err => { log.innerHTML = `> <span style="color:#da3633">網路錯誤：${esc(err.message)}</span>`; });
         }
 
         function permsOf(u) {
@@ -229,7 +232,7 @@
                 }
                 closeModal();
                 log.innerHTML = '> <span style="color:#3fb950">已儲存。</span>';
-                load();
+                load(true);
             }).catch(err => alertInModal('網路錯誤：' + err.message));
         }
 

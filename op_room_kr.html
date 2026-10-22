@@ -150,17 +150,29 @@
             applyAutoResize();
         }
 
-        function fetchDatabase() {
-            document.getElementById('sys-log').innerHTML = `> 正在從雲端讀取現有資料庫...`;
-            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "getSavedRooms", country: "KOREA" }) })
-            .then(res => res.json()).then(res => {
-                if(res.status === 'success') {
-                    currentInventory = res.inventory || [];
-                    currentDbData = res.data || [];
-                    renderAllTables(currentDbData);
-                    document.getElementById('sys-log').innerHTML += `<br>> <span style="color: #3fb950">雲端資料庫已載入。</span>`;
+        // 使用者是否改過表格內容 (有改就不讓背景更新蓋掉)
+        let hasUnsavedEdits = false;
+        document.addEventListener('input', e => { if (e.target.closest('#ski-view, #city-view, #inventory-view')) hasUnsavedEdits = true; });
+
+        // skipCache：儲存後重新讀取時不先顯示舊資料
+        function fetchDatabase(skipCache) {
+            const log = document.getElementById('sys-log');
+            log.innerHTML = `> 正在從雲端讀取現有資料庫...`;
+            fetchWithCache(GAS_API_URL, { action: "getSavedRooms", country: "KOREA" }, (res, meta) => {
+                if (res.status !== 'success') { log.innerHTML += `<br>> <span style="color: #da3633">讀取失敗：${res.message}</span>`; return; }
+                if (meta.changed && hasUnsavedEdits) {
+                    log.innerHTML += `<br>> <span style="color: #d29922">雲端有較新的資料，但你正在編輯，所以沒有自動更新。儲存前請先重新整理頁面。</span>`;
+                    return;
                 }
-            });
+                currentInventory = res.inventory || [];
+                currentDbData = res.data || [];
+                renderAllTables(currentDbData);
+                log.innerHTML += meta.fromCache
+                    ? `<br>> 先顯示上次的資料，正在向雲端確認最新資料...`
+                    : `<br>> <span style="color: #3fb950">雲端資料庫已載入${meta.changed ? '（已更新為最新資料）' : ''}。</span>`;
+            }, { skipCache: skipCache })
+            .then(result => { if (!result.updated) log.innerHTML += `<br>> <span style="color: #3fb950">已是最新資料。</span>`; })
+            .catch(err => { log.innerHTML += `<br>> <span style="color: #da3633">網路錯誤：${err.message}</span>`; });
         }
 
         function renderAllTables(dataMatrix) {
@@ -401,6 +413,7 @@
                         return;
                     }
                     log.innerHTML += `<br>> <span style="color: #3fb950">運算完成！最新房控表已生成在下方。</span>`;
+                    hasUnsavedEdits = true;   // 運算結果尚未儲存，不讓背景更新蓋掉
                     currentDbData = data.rawData;
                     renderAllTables(currentDbData);
                 } else {
@@ -513,7 +526,8 @@
             .then(res => res.json()).then(res => {
                 if(res.status === 'success') {
                     document.getElementById('sys-log').innerHTML += `<br>> <span style="color: #3fb950">儲存成功！資料庫已更新。</span>`;
-                    fetchDatabase();
+                    hasUnsavedEdits = false;
+                    fetchDatabase(true);
                 }
             });
         }
