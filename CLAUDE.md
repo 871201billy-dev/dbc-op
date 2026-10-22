@@ -50,7 +50,8 @@ GAS 原始碼不在 repo 裡 (`gas_下載/` 已被 .gitignore 排除，因含金
 | 登入驗證中心 (綁定試算表「DBC OP 帳號權限」) | `1uoRoUtrjW08qOUcwLvu2IDumtcXNuI1EHsUO4uba2rLGu91YqokszNlr` | `AKfycbzkU3mDH6WW6LfT9wUlALln-QDHSJD1tamfarSbcYSF3Um9m7agCrFSqq_Km79iDQQ1` | — |
 | 房控 (「房控核算系統 的副本」) | `1wM9G2Hn-u9cVgSXAAOXvfMQpGQf4wL_6K7Vx4lYHX_yG_eSw8sS1-lO_` | `AKfycbwDwl38nPYKjLlC_6dFYVgTOZDu99s2EtrjUvqtfuc8wC677woMD3x3GiSzeTEpchixuQ` | ✅ |
 | 房控 原版 (計算邏輯參考，勿改) | `104HQJJVPDtbMBTk8skVr7U02YOEvWNnSt80eghpuHLSmbMZzaZ7RmE4m` | — | — |
-| 人數回報 (綁定試算表) | 尚未取得 | `AKfycbxXNtscCW2ZDxrVsx6Yti4t5zmkF3MVEQ9TJ9LKthv-Fz-F__vkUGhoREQd_QkD-24KNw` | ❌ 待加 |
+| 人數回報「每日人數-claude整合版」(綁定試算表；選單「自動報表」與網站共用 runReport) | `1ros8-g3tMb6RBbAtZuHfcFLSRwrzdtnMnq02-pvPBgqLtnaA2ubLxsq7` | `AKfycbwEvMTsG1Qa7-9guOxwryGNbacOBXZuWskES9WLY7MMB2YkYNXKvTeTYVSEKdOkYln9` | ✅ |
+| 人數回報 舊版 (Gemini 改寫，已停用) | 不明 | `AKfycbxXNtscCW2ZDxrVsx6Yti4t5zmkF3MVEQ9TJ9LKthv-Fz-F__vkUGhoREQd_QkD-24KNw` | — |
 | B2B (綁定試算表) | 尚未取得 | `AKfycbx6T_sZl5cNVbPZ23cCaH9amZ8N8d-abZl2Zzu5WwKMNcgbioDHzN-Qy_94e8qm0j8M` | ❌ 暫緩 |
 
 更新 GAS：改程式 → `clasp push` → `clasp deploy -i <正式部署 ID> -d "說明"` (部署 ID 不變，網址就不變)。
@@ -64,7 +65,13 @@ GAS 原始碼不在 repo 裡 (`gas_下載/` 已被 .gitignore 排除，因含金
 - 野澤團 `s4-j-n*` 不算斑尾雪場房；韓國名單排除 `s4-j`，日本名單排除 `s4-k`
 - 韓國線輸出 18 欄 (含庫存剩餘、個團資料)；日本線輸出 11 欄 (一日一列)
 
+## 人數回報規則
+
+- 來源：「總表複製」工作表 (公司系統的團體預計銷售報表)，C 欄團體代碼、H 出發日、I 年、S 確認、T 預訂、U 逾期、W 候補
+- 「報表設定」工作表：分類名稱 / 類型 (一般、課程、同業) / 團號前綴 (逗號分隔，支援 `*` 萬用字元；目前用結尾 A = 直客、B = 同業)
+- 輸出「yyyy/MM/dd 人數回報」工作表：行程 / 課程 / 同業專案 三區，0 人分類隱藏，月份列依實際報名月份產生
+- 計算邏輯在 `computeReport` / `buildGrid` (純函式，可在 Node 用 vm 載入測試)
+
 ## 待辦
 
-- 人數回報：使用者回報功能有問題待查；需要指令碼 ID 才能看 GAS 與加權限檢查
 - B2B：GAS 權限檢查暫緩
